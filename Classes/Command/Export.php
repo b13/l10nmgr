@@ -35,17 +35,16 @@ class Export extends Command
     {
         $this->setDescription('Export the translations as file')
             ->setHelp('With this command you can Export translation')
-            ->addOption('check-exports', null, InputOption::VALUE_NONE,"Check for already exported content")
-            ->addOption('config', 'c', InputOption::VALUE_OPTIONAL,"UIDs of the localization manager configurations to be used for export. Comma seperated values, no spaces.\nDefault is EXTCONF which means values are taken from extension configuration.")
-            ->addOption('forcedSourceLanguage', 'f', InputOption::VALUE_OPTIONAL,"UID of the already translated language used as overlaid source language during export.")
+            ->addOption('check-exports', null, InputOption::VALUE_NONE, 'Check for already exported content')
+            ->addOption('config', 'c', InputOption::VALUE_OPTIONAL, "UIDs of the localization manager configurations to be used for export. Comma seperated values, no spaces.\nDefault is EXTCONF which means values are taken from extension configuration.")
+            ->addOption('forcedSourceLanguage', 'f', InputOption::VALUE_OPTIONAL, 'UID of the already translated language used as overlaid source language during export.')
             ->addOption('format', null, InputOption::VALUE_OPTIONAL, "Format for export of translatable data can be:\n CATXML = XML for translation tools (default)\n EXCEL = Microsoft XML format")
-            ->addOption('hidden', null, InputOption::VALUE_NONE,"Do not export hidden contents")
-            ->addOption('srcPID', 'p', InputOption::VALUE_OPTIONAL,"UID of the page used during export. Needs configuration depth to be set to \"current page\" Default = 0")
-            ->addOption('target', 't', InputOption::VALUE_OPTIONAL,"UIDs for the target languages used during export. Comma seperated values, no spaces. Default is 0. In that case UIDs are taken from extension configuration.")
-            ->addOption('updated', 'u', InputOption::VALUE_NONE,"Export only new/updated contents")
-            ->addOption('workspace', 'w', InputOption::VALUE_OPTIONAL,"UID of the workspace used during export. Default = 0")
+            ->addOption('hidden', null, InputOption::VALUE_NONE, 'Do not export hidden contents')
+            ->addOption('srcPID', 'p', InputOption::VALUE_OPTIONAL, 'UID of the page used during export. Needs configuration depth to be set to "current page" Default = 0')
+            ->addOption('target', 't', InputOption::VALUE_OPTIONAL, 'UIDs for the target languages used during export. Comma seperated values, no spaces. Default is 0. In that case UIDs are taken from extension configuration.')
+            ->addOption('updated', 'u', InputOption::VALUE_NONE, 'Export only new/updated contents')
+            ->addOption('workspace', 'w', InputOption::VALUE_OPTIONAL, 'UID of the workspace used during export. Default = 0')
             ;
-
     }
 
     /**
@@ -53,10 +52,9 @@ class Export extends Command
      *
      * @param InputInterface  $input
      * @param OutputInterface $output
-     * @return int|null|void
+     * @return int|void|null
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-
     }
 }
