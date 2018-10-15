@@ -500,6 +500,6 @@ class Export extends CommandLineController
 }
 
 // Call the functionality
-/** @var Export $cleanerObj */
-$cleanerObj = GeneralUtility::makeInstance(Export::class);
+/** @var TestExport $cleanerObj */
+$cleanerObj = GeneralUtility::makeInstance(TestExport::class);
 $cleanerObj->cli_main($_SERVER['argv']);
