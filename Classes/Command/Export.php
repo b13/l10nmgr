@@ -244,7 +244,7 @@ class Export extends Command
             }
             // Check  if sourceLangStaticId is set in configuration and set setForcedSourceLanguage to this value
             if ($l10nmgrCfgObj->getData('sourceLangStaticId') && ExtensionManagementUtility::isLoaded('static_info_tables')) {
-                $forceLanguage = $this->getStaticLangArr($l10nmgrCfgObj->getData('sourceLangStaticId'));
+                $forceLanguage = $this->getStaticLangUid($l10nmgrCfgObj->getData('sourceLangStaticId'));
                 $l10nmgrGetXML->setForcedSourceLanguage($forceLanguage);
             }
             $forceLanguage = $input->getOption('forcedSourceLanguage') ?? 0;
