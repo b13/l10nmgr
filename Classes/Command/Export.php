@@ -24,6 +24,7 @@ namespace Localizationteam\L10nmgr\Command;
 use Localizationteam\L10nmgr\Model\L10nConfiguration;
 use Localizationteam\L10nmgr\View\CatXmlView;
 use Localizationteam\L10nmgr\View\ExcelXmlView;
+use Localizationteam\L10nmgr\View\ExportViewInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -233,10 +234,10 @@ class Export extends Command
         $l10nmgrCfgObj->setSourcePid($sourcePid);
         if ($l10nmgrCfgObj->isLoaded()) {
             if ($format == 'CATXML') {
-                /** @var CatXmlView $l10nmgrGetXML */
+                /** @var ExportViewInterface $l10nmgrGetXML */
                 $l10nmgrGetXML = GeneralUtility::makeInstance(CatXmlView::class, $l10nmgrCfgObj, $tlang);
             } elseif ($format == 'EXCEL') {
-                /** @var ExcelXmlView $l10nmgrGetXML */
+                /** @var ExportViewInterface $l10nmgrGetXML */
                 $l10nmgrGetXML = GeneralUtility::makeInstance(ExcelXmlView::class, $l10nmgrCfgObj, $tlang);
             } else {
                 $output->writeln("<error>Wrong format. Use 'CATXML' or 'EXCEL' </error>");

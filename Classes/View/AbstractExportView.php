@@ -38,7 +38,7 @@ use TYPO3\CMS\Lang\LanguageService;
  * @package TYPO3
  * @subpackage tx_l10nmgr
  **/
-abstract class AbstractExportView
+abstract class AbstractExportView implements ExportViewInterface
 {
     /**
      * @var string
