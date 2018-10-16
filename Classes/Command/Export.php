@@ -106,10 +106,10 @@ class Export extends Command
         $extConf = $this->getExtConf();
 
         // get format (CATXML,EXCEL)
-        $format = $input->getOption('format') !== null ? $input->getOption('format') : 'CATXML';
+        $format = $input->getOption('format') ?? 'CATXML';
 
         // get l10ncfg command line takes precedence over extConf
-        $l10ncfg = $input->getOption('config') !== null ? $input->getOption('config') : 'EXTCONF';
+        $l10ncfg = $input->getOption('config') ?? 'EXTCONF';
 
         if ($l10ncfg !== 'EXTCONF' && !empty($l10ncfg)) {
             //export single
@@ -123,7 +123,7 @@ class Export extends Command
         }
 
         // get target languages
-        $tlang = $input->getOption('target') !== null ? $input->getOption('target') : '0';
+        $tlang = $input->getOption('target') ?? '0';
         if ($tlang !== '0') {
             //export single
             $tlangs = explode(',', $tlang);
@@ -136,7 +136,7 @@ class Export extends Command
         }
 
         // get workspace ID
-        $wsId = $input->getOption('workspace') !== null ? $input->getOption('workspace') : '0';
+        $wsId = $input->getOption('workspace') ?? '0';
         // todo does workspace exits?
         if (MathUtility::canBeInterpretedAsInteger($wsId) === false) {
             $output->writeln('<error>' . $this->getLanguageService()->getLL('error.workspace_id_int.msg') . '</error>');
@@ -229,7 +229,7 @@ class Export extends Command
         /** @var L10nConfiguration $l10nmgrCfgObj */
         $l10nmgrCfgObj = GeneralUtility::makeInstance(L10nConfiguration::class);
         $l10nmgrCfgObj->load($l10ncfg);
-        $sourcePid = $input->getOption('srcPID') !== null ? (int)$input->getOption('srcPID') : 0;
+        $sourcePid = $input->getOption('srcPID') ?? 0;
         $l10nmgrCfgObj->setSourcePid($sourcePid);
         if ($l10nmgrCfgObj->isLoaded()) {
             if ($format == 'CATXML') {
@@ -240,16 +240,14 @@ class Export extends Command
                 $l10nmgrGetXML = GeneralUtility::makeInstance(ExcelXmlView::class, $l10nmgrCfgObj, $tlang);
             } else {
                 $output->writeln("<error>Wrong format. Use 'CATXML' or 'EXCEL' </error>");
+                return;
             }
             // Check  if sourceLangStaticId is set in configuration and set setForcedSourceLanguage to this value
             if ($l10nmgrCfgObj->getData('sourceLangStaticId') && ExtensionManagementUtility::isLoaded('static_info_tables')) {
-                $staticLangArr = $this->getStaticLangArr($l10nmgrCfgObj->getData('sourceLangStaticId'));
-                if (is_array($staticLangArr) && ($staticLangArr['uid'] > 0)) {
-                    $forceLanguage = $staticLangArr['uid'];
-                    $l10nmgrGetXML->setForcedSourceLanguage($forceLanguage);
-                }
+                $forceLanguage = $this->getStaticLangArr($l10nmgrCfgObj->getData('sourceLangStaticId'));
+                $l10nmgrGetXML->setForcedSourceLanguage($forceLanguage);
             }
-            $forceLanguage = $input->getOption('forcedSourceLanguage') !== null ? (int)$input->getOption('forcedSourceLanguage') : 0;
+            $forceLanguage = $input->getOption('forcedSourceLanguage') ?? 0;
             if ($forceLanguage) {
                 $l10nmgrGetXML->setForcedSourceLanguage($forceLanguage);
             }
@@ -343,21 +341,22 @@ class Export extends Command
 
     /**
      * @param $sourceLangStaticId
-     * @return array
+     * @return int
      */
-    protected function getStaticLangArr($sourceLangStaticId)
+    protected function getStaticLangUid($sourceLangStaticId)
     {
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('sys_language');
-        return $queryBuilder->select('uid')
+        $result = $queryBuilder->select('uid')
             ->from('sys_language')
             ->where(
                 $queryBuilder->expr()->eq(
-                    'static_lang_isocode.pid',
+                    'static_lang_isocode',
                     $sourceLangStaticId
                 )
             )
             ->execute()
             ->fetch();
+        return $result['uid'];
     }
 
     /**
