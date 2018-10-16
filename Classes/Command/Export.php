@@ -103,9 +103,6 @@ class Export extends Command
         $error = false;
         $time_start = microtime(true);
 
-        var_dump($input->getOptions());
-        return;
-
         $extConf = $this->getExtConf();
 
         // get format (CATXML,EXCEL)
@@ -155,36 +152,20 @@ class Export extends Command
         if ($error) {
             return;
         }
-        if ($format == 'CATXML') {
-            foreach ($l10ncfgs as $l10ncfg) {
-                if (MathUtility::canBeInterpretedAsInteger($l10ncfg) === false) {
-                    $output->writeln('<error>' . $this->getLanguageService()->getLL('error.l10ncfg_id_int.msg') . '</error>');
+        foreach ($l10ncfgs as $l10ncfg) {
+            if (MathUtility::canBeInterpretedAsInteger($l10ncfg) === false) {
+                $output->writeln('<error>' . $this->getLanguageService()->getLL('error.l10ncfg_id_int.msg') . '</error>');
+                return;
+            }
+            foreach ($tlangs as $tlang) {
+                if (MathUtility::canBeInterpretedAsInteger($tlang) === false) {
+                    $output->writeln('<error>' . $this->getLanguageService()->getLL('error.target_language_id_integer.msg') . '</error>');
                     return;
                 }
-                foreach ($tlangs as $tlang) {
-                    if (MathUtility::canBeInterpretedAsInteger($tlang) === false) {
-                        $output->writeln('<error>' . $this->getLanguageService()->getLL('error.target_language_id_integer.msg') . '</error>');
-                        return;
-                    }
-                    $msg .= $this->exportCATXML($l10ncfg, $tlang, $input, $output);
-                }
+                $msg .= $this->exportXML($l10ncfg, $tlang, $format, $input, $output);
             }
         }
-        if ($format == 'EXCEL') { //else
-            foreach ($l10ncfgs as $l10ncfg) {
-                if (MathUtility::canBeInterpretedAsInteger($l10ncfg) === false) {
-                    $output->writeln('<error>' . $this->getLanguageService()->getLL('error.l10ncfg_id_int.msg') . '</error>');
-                    return;
-                }
-                foreach ($tlangs as $tlang) {
-                    if (MathUtility::canBeInterpretedAsInteger($tlang) === false) {
-                        $output->writeln('<error>' . $this->getLanguageService()->getLL('error.target_language_id_integer.msg') . '</error>');
-                        return;
-                    }
-                    $msg .= $this->exportEXCELXML($l10ncfg, $tlang, $input, $output);
-                }
-            }
-        }
+
         // Send email notification if set
         $time_end = microtime(true);
         $time = $time_end - $time_start;
@@ -240,7 +221,7 @@ class Export extends Command
      *
      * @return string An error message in case of failure
      */
-    protected function exportCATXML($l10ncfg, $tlang, $input, $output)
+    protected function exportXML($l10ncfg, $tlang, $format, $input, $output)
     {
         $error = '';
         // Load the configuration
@@ -251,8 +232,15 @@ class Export extends Command
         $sourcePid = $input->getOption('srcPID') !== null ? (int)$input->getOption('srcPID') : 0;
         $l10nmgrCfgObj->setSourcePid($sourcePid);
         if ($l10nmgrCfgObj->isLoaded()) {
-            /** @var CatXmlView $l10nmgrGetXML */
-            $l10nmgrGetXML = GeneralUtility::makeInstance(CatXmlView::class, $l10nmgrCfgObj, $tlang);
+            if ($format == 'CATXML') {
+                /** @var CatXmlView $l10nmgrGetXML */
+                $l10nmgrGetXML = GeneralUtility::makeInstance(CatXmlView::class, $l10nmgrCfgObj, $tlang);
+            } elseif ($format == 'EXCEL') {
+                /** @var ExcelXmlView $l10nmgrGetXML */
+                $l10nmgrGetXML = GeneralUtility::makeInstance(ExcelXmlView::class, $l10nmgrCfgObj, $tlang);
+            } else {
+                $output->writeln("<error>Wrong format. Use 'CATXML' or 'EXCEL' </error>");
+            }
             // Check  if sourceLangStaticId is set in configuration and set setForcedSourceLanguage to this value
             if ($l10nmgrCfgObj->getData('sourceLangStaticId') && ExtensionManagementUtility::isLoaded('static_info_tables')) {
                 $staticLangArr = $this->getStaticLangArr($l10nmgrCfgObj->getData('sourceLangStaticId'));
@@ -349,88 +337,6 @@ class Export extends Command
             }
         } else {
             $error .= $this->getLanguageService()->getLL('error.ftp.connection_failed.msg');
-        }
-        return $error;
-    }
-
-    /**
-     * exportEXCELXML which is called over cli
-     *
-     * @param int             $l10ncfg ID of the configuration to load
-     * @param int             $tlang   ID of the language to translate to
-     * @param InputInterface  $input
-     * @param OutputInterface $output
-     *
-     * @return string An error message in case of failure
-     */
-    protected function exportEXCELXML($l10ncfg, $tlang, $input, $output)
-    {
-        $error = '';
-        // Load the configuration
-        $lConf = $this->getExtConf();
-        /** @var L10nConfiguration $l10nmgrCfgObj */
-        $l10nmgrCfgObj = GeneralUtility::makeInstance(L10nConfiguration::class);
-        $l10nmgrCfgObj->load($l10ncfg);
-        $l10nmgrCfgObj->setSourcePid((int)$input->getOption('srcPID'));
-        if ($l10nmgrCfgObj->isLoaded()) {
-            /** @var ExcelXmlView $l10nmgrGetXML */
-            $l10nmgrGetXML = GeneralUtility::makeInstance(ExcelXmlView::class, $l10nmgrCfgObj, $tlang);
-            // Check if sourceLangStaticId is set in configuration and set setForcedSourceLanguage to this value
-            if ($l10nmgrCfgObj->getData('sourceLangStaticId') && ExtensionManagementUtility::isLoaded('static_info_tables')) {
-                $staticLangArr = $this->getStaticLangArr($l10nmgrCfgObj->getData('sourceLangStaticId'));
-                if (is_array($staticLangArr) && ($staticLangArr['uid'] > 0)) {
-                    $forceLanguage = $staticLangArr['uid'];
-                    $l10nmgrGetXML->setForcedSourceLanguage($forceLanguage);
-                }
-            }
-            $forceLanguage = $input->getOption('forcedSourceLanguage') !== null ? (int)$input->getOption('forcedSourceLanguage') : 0;
-            if ($forceLanguage) {
-                $l10nmgrGetXML->setForcedSourceLanguage($forceLanguage);
-            }
-            $onlyChanged = $input->getOption('updated');
-            if ($onlyChanged) {
-                $l10nmgrGetXML->setModeOnlyChanged();
-            }
-            $hidden = $input->getOption('hidden');
-            if ($hidden) {
-                $l10nmgrGetXML->setModeNoHidden();
-            }
-            // If the check for already exported content is enabled, run the ckeck.
-            $checkExportsCli = $output->writeln('check-exports');
-            $checkExports = $l10nmgrGetXML->checkExports();
-            if ($checkExportsCli && !$checkExports) {
-                $output->writeln($this->getLanguageService()->getLL('export.process.duplicate.title') . ' ' . $this->getLanguageService()->getLL('export.process.duplicate.message') . LF);
-                $output->writeln($l10nmgrGetXML->renderExportsCli() . LF);
-            } else {
-                // Save export to XML file
-                $xmlFileName = $l10nmgrGetXML->render();
-                $l10nmgrGetXML->saveExportInformation();
-                // If email notification is set send export files to responsible translator
-                if ($lConf['enable_notification'] == 1) {
-                    if (empty($lConf['email_recipient'])) {
-                        $output->writeln($this->getLanguageService()->getLL('error.email.repient_missing.msg') . "\n");
-                    } else {
-                        $this->emailNotification($xmlFileName, $l10nmgrCfgObj, $tlang);
-                    }
-                } else {
-                    $output->writeln($this->getLanguageService()->getLL('error.email.notification_disabled.msg') . "\n");
-                }
-                // If FTP option is set upload files to remote server
-                if ($lConf['enable_ftp'] == 1) {
-                    if (file_exists($xmlFileName)) {
-                        $error .= $this->ftpUpload($xmlFileName, $l10nmgrGetXML->getFileName());
-                    } else {
-                        $output->writeln($this->getLanguageService()->getLL('error.ftp.file_not_found.msg') . "\n");
-                    }
-                } else {
-                    $output->writeln($this->getLanguageService()->getLL('error.ftp.disabled.msg') . "\n");
-                }
-                if ($lConf['enable_notification'] == 0 && $lConf['enable_ftp'] == 0) {
-                    $output->writeln(sprintf($this->getLanguageService()->getLL('export.file_saved.msg'), $xmlFileName));
-                }
-            }
-        } else {
-            $error .= $this->getLanguageService()->getLL('error.l10nmgr.object_not_loaded.msg') . "\n";
         }
         return $error;
     }
