@@ -23,6 +23,7 @@ namespace Localizationteam\L10nmgr\Command;
 
 use Localizationteam\L10nmgr\Model\L10nConfiguration;
 use Localizationteam\L10nmgr\View\CatXmlView;
+use Localizationteam\L10nmgr\View\ExcelXmlView;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -102,6 +103,9 @@ class Export extends Command
         $error = false;
         $time_start = microtime(true);
 
+        var_dump($input->getOptions());
+        return;
+
         $extConf = $this->getExtConf();
 
         // get format (CATXML,EXCEL)
@@ -177,7 +181,7 @@ class Export extends Command
                         $output->writeln('<error>' . $this->getLanguageService()->getLL('error.target_language_id_integer.msg') . '</error>');
                         return;
                     }
-                    $msg .= $this->exportEXCELXML($l10ncfg, $tlang);
+                    $msg .= $this->exportEXCELXML($l10ncfg, $tlang, $input, $output);
                 }
             }
         }
@@ -239,8 +243,8 @@ class Export extends Command
     protected function exportCATXML($l10ncfg, $tlang, $input, $output)
     {
         $error = '';
-        $lConf = $this->getExtConf();
         // Load the configuration
+        $lConf = $this->getExtConf();
         /** @var L10nConfiguration $l10nmgrCfgObj */
         $l10nmgrCfgObj = GeneralUtility::makeInstance(L10nConfiguration::class);
         $l10nmgrCfgObj->load($l10ncfg);
@@ -251,19 +255,7 @@ class Export extends Command
             $l10nmgrGetXML = GeneralUtility::makeInstance(CatXmlView::class, $l10nmgrCfgObj, $tlang);
             // Check  if sourceLangStaticId is set in configuration and set setForcedSourceLanguage to this value
             if ($l10nmgrCfgObj->getData('sourceLangStaticId') && ExtensionManagementUtility::isLoaded('static_info_tables')) {
-                // todo check
-                $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('sys_language');
-                $staticLangArr = $queryBuilder->select('uid')
-                    ->from('sys_language')
-                    ->where(
-                        $queryBuilder->expr()->eq(
-                            'static_lang_isocode.pid',
-                            $l10nmgrCfgObj->getData('sourceLangStaticId')
-                        )
-                    )
-                    ->execute()
-                    ->fetch();
-
+                $staticLangArr = $this->getStaticLangArr($l10nmgrCfgObj->getData('sourceLangStaticId'));
                 if (is_array($staticLangArr) && ($staticLangArr['uid'] > 0)) {
                     $forceLanguage = $staticLangArr['uid'];
                     $l10nmgrGetXML->setForcedSourceLanguage($forceLanguage);
@@ -364,89 +356,102 @@ class Export extends Command
     /**
      * exportEXCELXML which is called over cli
      *
-     * @param int $l10ncfg ID of the configuration to load
-     * @param int $tlang   ID of the language to translate to
+     * @param int             $l10ncfg ID of the configuration to load
+     * @param int             $tlang   ID of the language to translate to
+     * @param InputInterface  $input
+     * @param OutputInterface $output
      *
      * @return string An error message in case of failure
      */
-    protected function exportEXCELXML($l10ncfg, $tlang)
+    protected function exportEXCELXML($l10ncfg, $tlang, $input, $output)
     {
         $error = '';
         // Load the configuration
-        $this->loadExtConf();
+        $lConf = $this->getExtConf();
         /** @var L10nConfiguration $l10nmgrCfgObj */
         $l10nmgrCfgObj = GeneralUtility::makeInstance(L10nConfiguration::class);
         $l10nmgrCfgObj->load($l10ncfg);
-        $l10nmgrCfgObj->setSourcePid((int)$this->cli_args['--srcPID']);
+        $l10nmgrCfgObj->setSourcePid((int)$input->getOption('srcPID'));
         if ($l10nmgrCfgObj->isLoaded()) {
             /** @var ExcelXmlView $l10nmgrGetXML */
             $l10nmgrGetXML = GeneralUtility::makeInstance(ExcelXmlView::class, $l10nmgrCfgObj, $tlang);
             // Check if sourceLangStaticId is set in configuration and set setForcedSourceLanguage to this value
             if ($l10nmgrCfgObj->getData('sourceLangStaticId') && ExtensionManagementUtility::isLoaded('static_info_tables')) {
-                $staticLangArr = BackendUtility::getRecordRaw(
-                    'sys_language',
-                    'static_lang_isocode = ' . $l10nmgrCfgObj->getData('sourceLangStaticId'),
-                    'uid'
-                );
+                $staticLangArr = $this->getStaticLangArr($l10nmgrCfgObj->getData('sourceLangStaticId'));
                 if (is_array($staticLangArr) && ($staticLangArr['uid'] > 0)) {
                     $forceLanguage = $staticLangArr['uid'];
                     $l10nmgrGetXML->setForcedSourceLanguage($forceLanguage);
                 }
             }
-            $forceLanguage = isset($this->cli_args['--forcedSourceLanguage']) ? (int)$this->cli_args['--forcedSourceLanguage'][0] : 0;
+            $forceLanguage = $input->getOption('forcedSourceLanguage') !== null ? (int)$input->getOption('forcedSourceLanguage') : 0;
             if ($forceLanguage) {
                 $l10nmgrGetXML->setForcedSourceLanguage($forceLanguage);
             }
-            $onlyChanged = isset($this->cli_args['--updated']) ? $this->cli_args['--updated'][0] : 'FALSE';
-            if ($onlyChanged === 'TRUE') {
+            $onlyChanged = $input->getOption('updated');
+            if ($onlyChanged) {
                 $l10nmgrGetXML->setModeOnlyChanged();
             }
-            $hidden = isset($this->cli_args['--hidden']) ? $this->cli_args['--hidden'][0] : 'FALSE';
-            if ($hidden === 'TRUE') {
-                $this->getBackendUser()->uc['moduleData']['tx_l10nmgr_M1_tx_l10nmgr_cm1']['noHidden'] = true;
+            $hidden = $input->getOption('hidden');
+            if ($hidden) {
                 $l10nmgrGetXML->setModeNoHidden();
             }
             // If the check for already exported content is enabled, run the ckeck.
-            $checkExportsCli = isset($this->cli_args['--check-exports']) ? (bool)$this->cli_args['--check-exports'][0] : false;
+            $checkExportsCli = $output->writeln('check-exports');
             $checkExports = $l10nmgrGetXML->checkExports();
-            if (($checkExportsCli === true) && ($checkExports == false)) {
-                $this->cli_echo($this->getLanguageService()->getLL('export.process.duplicate.title') . ' ' . $this->getLanguageService()->getLL('export.process.duplicate.message') . LF);
-                $this->cli_echo($l10nmgrGetXML->renderExportsCli() . LF);
+            if ($checkExportsCli && !$checkExports) {
+                $output->writeln($this->getLanguageService()->getLL('export.process.duplicate.title') . ' ' . $this->getLanguageService()->getLL('export.process.duplicate.message') . LF);
+                $output->writeln($l10nmgrGetXML->renderExportsCli() . LF);
             } else {
                 // Save export to XML file
                 $xmlFileName = $l10nmgrGetXML->render();
                 $l10nmgrGetXML->saveExportInformation();
                 // If email notification is set send export files to responsible translator
-                if ($this->lConf['enable_notification'] == 1) {
-                    if (empty($this->lConf['email_recipient'])) {
-                        $this->cli_echo($this->getLanguageService()->getLL('error.email.repient_missing.msg') . "\n");
+                if ($lConf['enable_notification'] == 1) {
+                    if (empty($lConf['email_recipient'])) {
+                        $output->writeln($this->getLanguageService()->getLL('error.email.repient_missing.msg') . "\n");
                     } else {
                         $this->emailNotification($xmlFileName, $l10nmgrCfgObj, $tlang);
                     }
                 } else {
-                    $this->cli_echo($this->getLanguageService()->getLL('error.email.notification_disabled.msg') . "\n");
+                    $output->writeln($this->getLanguageService()->getLL('error.email.notification_disabled.msg') . "\n");
                 }
                 // If FTP option is set upload files to remote server
-                if ($this->lConf['enable_ftp'] == 1) {
+                if ($lConf['enable_ftp'] == 1) {
                     if (file_exists($xmlFileName)) {
                         $error .= $this->ftpUpload($xmlFileName, $l10nmgrGetXML->getFileName());
                     } else {
-                        $this->cli_echo($this->getLanguageService()->getLL('error.ftp.file_not_found.msg') . "\n");
+                        $output->writeln($this->getLanguageService()->getLL('error.ftp.file_not_found.msg') . "\n");
                     }
                 } else {
-                    $this->cli_echo($this->getLanguageService()->getLL('error.ftp.disabled.msg') . "\n");
+                    $output->writeln($this->getLanguageService()->getLL('error.ftp.disabled.msg') . "\n");
                 }
-                if ($this->lConf['enable_notification'] == 0 && $this->lConf['enable_ftp'] == 0) {
-                    $this->cli_echo(sprintf(
-                            $this->getLanguageService()->getLL('export.file_saved.msg'),
-                            $xmlFileName
-                        ) . "\n");
+                if ($lConf['enable_notification'] == 0 && $lConf['enable_ftp'] == 0) {
+                    $output->writeln(sprintf($this->getLanguageService()->getLL('export.file_saved.msg'), $xmlFileName));
                 }
             }
         } else {
             $error .= $this->getLanguageService()->getLL('error.l10nmgr.object_not_loaded.msg') . "\n";
         }
         return $error;
+    }
+
+    /**
+     * @param $sourceLangStaticId
+     * @return array
+     */
+    protected function getStaticLangArr($sourceLangStaticId)
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('sys_language');
+        return $queryBuilder->select('uid')
+            ->from('sys_language')
+            ->where(
+                $queryBuilder->expr()->eq(
+                    'static_lang_isocode.pid',
+                    $sourceLangStaticId
+                )
+            )
+            ->execute()
+            ->fetch();
     }
 
     /**
