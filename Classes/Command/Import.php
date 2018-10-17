@@ -94,10 +94,11 @@ class Import extends Command
                 'task',
                 't',
                 InputOption::VALUE_OPTIONAL,
-                "The values can be:\n importString = Import a XML string\n importFile = Import a XML file\n preview = Generate a preview of the source from a XML string\n",
+                "The values can be:\n importString = Import a XML string\n importFile = Import a XML file\n preview = Generate a preview of the source from a XML string",
                 'importString'
             );
     }
+
     /**
      * Executes the command for straigthening content elements
      *
@@ -108,37 +109,38 @@ class Import extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $start = microtime(true);
-        var_dump($input->getOptions());
         // Load the extension's configuration
         $this->extensionConfiguration = $this->getExtConf();
 
         // Parse the command-line arguments
         $callParameters = $this->initializeCallParameters($input, $output);
-        // Performance measurement
 
         $msg = '';
-        switch ($callParameters['task']) {
-            case 'importString':
-            case 'preview':
-                // Get workspace id from CATXML
-                // Continue if found, else exit script execution
-                try {
+        
+        try {
+            switch ($callParameters['task']) {
+                case 'importString':
+                case 'preview':
+                    // Get workspace id from CATXML
+                    // Continue if found, else exit script execution
+
                     $wsId = $this->getWsIdFromCATXML($callParameters['string']);
                     // Set workspace to the required workspace ID from CATXML:
                     $this->getBackendUser()->setWorkspace($wsId);
                     if ($callParameters['task'] == 'importString') {
-                        $msg .= $this->importCATXML($callParameters);
+                        $msg = $this->importCATXML($callParameters);
                     } else {
-                        $msg .= $this->previewSource($callParameters['string']);
+                        $msg = $this->previewSource($callParameters['string']);
                     }
-                } catch (\Exception $e) {
-                    $output->writeln('<error>' . $e->getMessage() . '</error>');
-                    return;
-                }
-                break;
-            case 'importFile':
-                $msg .= $this->importXMLFile($callParameters);
-                break;
+                    break;
+                case 'importFile':
+                    $this->importXMLFile($callParameters);
+                    $msg = "\n\nImport was successful.\n";
+                    break;
+            }
+        } catch (Exception $e) {
+            $output->writeln('<error>' . $e->getMessage() . '</error>');
+            return;
         }
         // Calculate duration and output result message
         $end = microtime(true);
@@ -177,7 +179,6 @@ class Import extends Command
         $callParameters['string'] = stripslashes($input->getOption('string'));
 
         // Get the path to XML or ZIP file
-        // todo default
         $callParameters['file'] = $input->getOption('file');
 
         // Get the server link for preview
@@ -206,15 +207,16 @@ class Import extends Command
      *
      * @return int ID of the workspace to import to
      * @throws \TYPO3\CMS\Core\Exception
-     * @throws \Exception
+     * @throws Exception
      */
     protected function getWsIdFromCATXML($xml)
     {
+        var_dump($xml);
         preg_match('/<t3_workspaceId>([^<]+)/', $xml, $matches);
         if (!empty($matches)) {
             return $matches[1];
         }
-        throw new \Exception('No workspace id found', 1322475562);
+        throw new Exception('No workspace id found', 1322475562);
     }
 
     /**
@@ -226,10 +228,7 @@ class Import extends Command
      */
     protected function importCATXML($callParameters)
     {
-
-        //todo sysLanguage
         $out = '';
-        $error = '';
         /** @var L10nBaseService $service */
         $service = GeneralUtility::makeInstance(L10nBaseService::class);
         if ($callParameters['importAsDefaultLanguage']) {
@@ -241,15 +240,14 @@ class Import extends Command
         $importManager = GeneralUtility::makeInstance(
             CatXmlImportManager::class,
             '',
-            $this->sysLanguage, // todo
+            $this->sysLanguage,
             $callParameters['string']
         );
         // Parse and check XML, load header data
         if ($importManager->parseAndCheckXMLString() === false) {
             $tmp = var_export($importManager->headerData, true);
             $tmp = str_replace("\n", '', $tmp);
-            $error .= $tmp;
-            $error .= $this->getLanguageService()->getLL('import.manager.error.parsing.xmlstring.message');
+            $error = $tmp . $this->getLanguageService()->getLL('import.manager.error.parsing.xmlstring.message');
             throw new Exception($error);
         }
         // Find l10n configuration record
@@ -262,10 +260,10 @@ class Import extends Command
             throw new Exception('l10ncfg not loaded! Exiting...');
         }
         //Do import...
-            $this->sysLanguage = $importManager->headerData['t3_sysLang']; //set import language to t3_sysLang from XML
-            if ($importManager->headerData['t3_sourceLang'] === $importManager->headerData['t3_targetLang']) {
-                $this->previewLanguage = $this->sysLanguage;
-            }
+        $this->sysLanguage = $importManager->headerData['t3_sysLang']; //set import language to t3_sysLang from XML
+        if ($importManager->headerData['t3_sourceLang'] === $importManager->headerData['t3_targetLang']) {
+            $this->previewLanguage = $this->sysLanguage;
+        }
         //Delete previous translations
         $importManager->delL10N($importManager->getDelL10NDataFromCATXMLNodes($importManager->getXmlNodes()));
         //Make preview links
@@ -278,15 +276,15 @@ class Import extends Command
             }
             /** @var MkPreviewLinkService $mkPreviewLinks */
             $mkPreviewLinks = GeneralUtility::makeInstance(
-                    MkPreviewLinkService::class,
-                    $importManager->headerData['t3_workspaceId'],
-                    $importManager->headerData['t3_sysLang'],
-                    $pageIds
-                );
+                MkPreviewLinkService::class,
+                $importManager->headerData['t3_workspaceId'],
+                $importManager->headerData['t3_sysLang'],
+                $pageIds
+            );
             $previewLink = $mkPreviewLinks->mkSinglePreviewLink(
-                    $importManager->headerData['t3_baseURL'],
-                    $callParameters['server']
-                );
+                $importManager->headerData['t3_baseURL'],
+                $callParameters['server']
+            );
             $out .= $previewLink;
         }
         /** @var $translationData TranslationData */
@@ -300,6 +298,7 @@ class Import extends Command
         } //Means OK if preview = 0
         return $out;
     }
+
     /**
      * getter/setter for LanguageService object
      *
@@ -311,10 +310,11 @@ class Import extends Command
     {
         if (!$this->languageService instanceof LanguageService) {
             $this->languageService = GeneralUtility::makeInstance(LanguageService::class);
+            $fileRef = 'EXT:l10nmgr/Resources/Private/Language/Cli/locallang.xml';
+            $this->languageService->includeLLFile($fileRef);
+            $this->languageService->init('');
         }
-        $fileRef = 'EXT:l10nmgr/Resources/Private/Language/Cli/locallang.xml';
-        $this->languageService->includeLLFile($fileRef);
-        $this->languageService->init('');
+
         return $this->languageService;
     }
 
@@ -346,11 +346,11 @@ class Import extends Command
         $pageIds = $importManager->getPidsFromCATXMLNodes($importManager->getXmlNodes());
         /** @var MkPreviewLinkService $mkPreviewLinks */
         $mkPreviewLinks = GeneralUtility::makeInstance(
-                MkPreviewLinkService::class,
-                $importManager->headerData['t3_workspaceId'],
-                $importManager->headerData['t3_sysLang'],
-                $pageIds
-            );
+            MkPreviewLinkService::class,
+            $importManager->headerData['t3_workspaceId'],
+            $importManager->headerData['t3_sysLang'],
+            $pageIds
+        );
         //Only valid if source language = default language (id=0)
         $previewLink = $mkPreviewLinks->mkSingleSrcPreviewLink($importManager->headerData['t3_baseURL'], 0);
         $out .= $previewLink;
@@ -358,121 +358,119 @@ class Import extends Command
         // Output
         return $out;
     }
+
     /**
      * Imports data from one or more XML files
      * Several files may be contained in a ZIP archive
      *
      * @return string Result output
+     * @throws Exception
      */
     protected function importXMLFile($callParameters)
     {
         $out = '';
-        $xmlFilesArr = [];
-        try {
-            $xmlFilesArr = $this->gatherAllFiles($callParameters['file']);
-        } catch (Exception $e) {
-            $out .= 'An error occurred trying to retrieve the files (' . $e->getMessage() . ')\n';
+        $xmlFilesArr = $this->gatherAllFiles($callParameters['file']);
+
+        if (count($xmlFilesArr) == 0) {
+            throw new Exception("\nNo files to import! Either point to a file using the --file option or define a FTP server to get the files from");
         }
-        if (count($xmlFilesArr) > 0) {
-            foreach ($xmlFilesArr as $xmlFile) {
-                try {
-                    $xmlFileHead = $this->getXMLFileHead($xmlFile);
-                    // Set workspace to the required workspace ID from CATXML:
-                    $this->getBackendUser()->setWorkspace($xmlFileHead['t3_workspaceId'][0]['XMLvalue']);
-                    // Set import language to t3_sysLang from XML
-                    $this->sysLanguage = $xmlFileHead['t3_sysLang'][0]['XMLvalue'];
-                    if ($xmlFileHead['t3_sourceLang'][0]['XMLvalue'] === $xmlFileHead['t3_targetLang'][0]['XMLvalue']) {
-                        $this->previewLanguage = $this->sysLanguage;
+
+        foreach ($xmlFilesArr as $xmlFile) {
+            try {
+                $xmlFileHead = $this->getXMLFileHead($xmlFile);
+                return;
+                // Set workspace to the required workspace ID from CATXML:
+                $this->getBackendUser()->setWorkspace($xmlFileHead['t3_workspaceId'][0]['XMLvalue']);
+                // Set import language to t3_sysLang from XML
+                $this->sysLanguage = $xmlFileHead['t3_sysLang'][0]['XMLvalue'];
+                if ($xmlFileHead['t3_sourceLang'][0]['XMLvalue'] === $xmlFileHead['t3_targetLang'][0]['XMLvalue']) {
+                    $this->previewLanguage = $this->sysLanguage;
+                }
+                /** @var L10nBaseService $service */
+                $service = GeneralUtility::makeInstance(L10nBaseService::class);
+                if ($callParameters['importAsDefaultLanguage']) {
+                    $service->setImportAsDefaultLanguage(true);
+                }
+                /** @var TranslationDataFactory $factory */
+                $factory = GeneralUtility::makeInstance(TranslationDataFactory::class);
+                // Relevant processing of XML Import with the help of the Importmanager
+                /** @var CatXmlImportManager $importManager */
+                $importManager = GeneralUtility::makeInstance(
+                    CatXmlImportManager::class,
+                    $xmlFile,
+                    $this->sysLanguage,
+                    ''
+                );
+                if ($importManager->parseAndCheckXMLFile() === false) {
+                    $out .= "\n\n" . $importManager->getErrorMessages();
+                } else {
+                    // Find l10n configuration record
+                    /** @var L10nConfiguration $l10ncfgObj */
+                    $l10ncfgObj = GeneralUtility::makeInstance(L10nConfiguration::class);
+                    $l10ncfgObj->load($importManager->headerData['t3_l10ncfg']);
+                    $l10ncfgObj->setSourcePid($callParameters['sourcePid']);
+                    $status = $l10ncfgObj->isLoaded();
+                    if ($status === false) {
+                        throw new Exception("l10ncfg not loaded! Exiting...\n");
                     }
-                    /** @var L10nBaseService $service */
-                    $service = GeneralUtility::makeInstance(L10nBaseService::class);
-                    if ($callParameters['importAsDefaultLanguage']) {
-                        $service->setImportAsDefaultLanguage(true);
-                    }
-                    /** @var TranslationDataFactory $factory */
-                    $factory = GeneralUtility::makeInstance(TranslationDataFactory::class);
-                    // Relevant processing of XML Import with the help of the Importmanager
-                    /** @var CatXmlImportManager $importManager */
-                    $importManager = GeneralUtility::makeInstance(
-                        CatXmlImportManager::class,
-                        $xmlFile,
-                        $this->sysLanguage,
-                        ''
-                    );
-                    if ($importManager->parseAndCheckXMLFile() === false) {
-                        $out .= "\n\n" . $importManager->getErrorMessages();
-                    } else {
-                        // Find l10n configuration record
-                        /** @var L10nConfiguration $l10ncfgObj */
-                        $l10ncfgObj = GeneralUtility::makeInstance(L10nConfiguration::class);
-                        $l10ncfgObj->load($importManager->headerData['t3_l10ncfg']);
-                        $l10ncfgObj->setSourcePid($callParameters['sourcePid']);
-                        $status = $l10ncfgObj->isLoaded();
-                        if ($status === false) {
-                            throw new Exception("l10ncfg not loaded! Exiting...\n");
+                    // Delete previous translations
+                    $importManager->delL10N($importManager->getDelL10NDataFromCATXMLNodes($importManager->getXmlNodes()));
+                    // Make preview links
+                    if ($callParameters['preview']) {
+                        $pageIds = [];
+                        if (empty($importManager->headerData['t3_previewId'])) {
+                            $pageIds = $importManager->getPidsFromCATXMLNodes($importManager->getXmlNodes());
+                        } else {
+                            $pageIds[0] = $importManager->headerData['t3_previewId'];
                         }
-                        // Delete previous translations
-                        $importManager->delL10N($importManager->getDelL10NDataFromCATXMLNodes($importManager->getXmlNodes()));
-                        // Make preview links
-                        if ($callParameters['preview']) {
-                            $pageIds = [];
-                            if (empty($importManager->headerData['t3_previewId'])) {
-                                $pageIds = $importManager->getPidsFromCATXMLNodes($importManager->getXmlNodes());
-                            } else {
-                                $pageIds[0] = $importManager->headerData['t3_previewId'];
-                            }
-                            /** @var MkPreviewLinkService $mkPreviewLinks */
-                            $mkPreviewLinks = GeneralUtility::makeInstance(
-                                MkPreviewLinkService::class,
-                                $importManager->headerData['t3_workspaceId'],
-                                $importManager->headerData['t3_sysLang'],
-                                $pageIds
-                            );
-                            $previewLink = $mkPreviewLinks->mkSinglePreviewLink(
-                                $importManager->headerData['t3_baseURL'],
-                                $callParameters['server']
-                            );
-                            $out .= $previewLink;
-                        }
-                        /** @var $translationData TranslationData */
-                        $translationData = $factory->getTranslationDataFromCATXMLNodes($importManager->getXMLNodes());
-                        $translationData->setLanguage($this->sysLanguage);
-                        $translationData->setPreviewLanguage($this->previewLanguage);
-                        unset($importManager);
-                        $service->saveTranslation($l10ncfgObj, $translationData);
-                        // Store some information about the imported file
-                        // This is used later for reporting by mail
-                        $this->filesImported[$xmlFile] = [
-                            'workspace' => $xmlFileHead['t3_workspaceId'][0]['XMLvalue'],
-                            'language' => $xmlFileHead['t3_targetLang'][0]['XMLvalue'],
-                            'configuration' => $xmlFileHead['t3_l10ncfg'][0]['XMLvalue']
-                        ];
+                        /** @var MkPreviewLinkService $mkPreviewLinks */
+                        $mkPreviewLinks = GeneralUtility::makeInstance(
+                            MkPreviewLinkService::class,
+                            $importManager->headerData['t3_workspaceId'],
+                            $importManager->headerData['t3_sysLang'],
+                            $pageIds
+                        );
+                        $previewLink = $mkPreviewLinks->mkSinglePreviewLink(
+                            $importManager->headerData['t3_baseURL'],
+                            $callParameters['server']
+                        );
+                        $out .= $previewLink;
                     }
-                } catch (Exception $e) {
-                    if ($e->getCode() == 1390394945) {
-                        $errorMessage = $e->getMessage();
-                    } else {
-                        $errorMessage = 'Badly formatted file (' . $e->getMessage() . ')';
-                    }
-                    $out .= "\n\n" . $xmlFile . ': ' . $errorMessage;
-                    // Store the error message for later reporting by mail
+                    /** @var $translationData TranslationData */
+                    $translationData = $factory->getTranslationDataFromCATXMLNodes($importManager->getXMLNodes());
+                    $translationData->setLanguage($this->sysLanguage);
+                    $translationData->setPreviewLanguage($this->previewLanguage);
+                    unset($importManager);
+                    $service->saveTranslation($l10ncfgObj, $translationData);
+                    // Store some information about the imported file
+                    // This is used later for reporting by mail
                     $this->filesImported[$xmlFile] = [
-                        'error' => $errorMessage
+                        'workspace' => $xmlFileHead['t3_workspaceId'][0]['XMLvalue'],
+                        'language' => $xmlFileHead['t3_targetLang'][0]['XMLvalue'],
+                        'configuration' => $xmlFileHead['t3_l10ncfg'][0]['XMLvalue'],
                     ];
                 }
+            } catch (Exception $e) {
+                if ($e->getCode() == 1390394945) {
+                    $errorMessage = $e->getMessage();
+                } else {
+                    $errorMessage = 'Badly formatted file (' . $e->getMessage() . ')';
+                }
+                $out .= "\n\n" . $xmlFile . ': ' . $errorMessage;
+                // Store the error message for later reporting by mail
+                $this->filesImported[$xmlFile] = [
+                    'error' => $errorMessage,
+                ];
             }
-        } else {
-            $out .= "\n\nNo files to import! Either point to a file using the --file option or define a FTP server to get the files from";
         }
+
         // Clean up after import
         $this->importCleanUp();
 
         // Means OK
-        if (empty($out)) {
-            $out = "\n\nImport was successful.\n";
+        if (!empty($out)) {
+            throw new Exception($out);
         }
-        // Output
-        return $out;
     }
 
     /**
@@ -507,6 +505,7 @@ class Import extends Command
         }
         return $files;
     }
+
     /**
      * Gets all available XML or ZIP files from the FTP server
      *
@@ -523,22 +522,22 @@ class Import extends Command
         }
         if (@ftp_login(
 
-                $connection,
+            $connection,
 
-                $this->extensionConfiguration['ftp_server_username'],
-                $this->extensionConfiguration['ftp_server_password']
+            $this->extensionConfiguration['ftp_server_username'],
+            $this->extensionConfiguration['ftp_server_password']
 
-            )
-            ) {
+        )
+        ) {
             ftp_pasv($connection, true);
             // If a path was defined, change directory to this path
             if (!empty($this->extensionConfiguration['ftp_server_downpath'])) {
                 $result = ftp_chdir($connection, $this->extensionConfiguration['ftp_server_downpath']);
                 if ($result === false) {
                     throw new Exception(
-                            'Could not change to directory: ' . $this->extensionConfiguration['ftp_server_downpath'],
-                            1322489723
-                        );
+                        'Could not change to directory: ' . $this->extensionConfiguration['ftp_server_downpath'],
+                        1322489723
+                    );
                 }
             }
             // Get list of files to download from current directory
@@ -582,7 +581,7 @@ class Import extends Command
                                     throw new Exception('Could not remove file ' . $aFile . 'from FTP server');
                                 }
                                 // If getting the file failed, register error message
-                                    // (don't throw exception as this does not need to interrupt the process)
+                                // (don't throw exception as this does not need to interrupt the process)
                             } else {
                                 throw new Exception('Problem getting file ' . $aFile . 'from server or saving it locally');
                             }
@@ -597,11 +596,12 @@ class Import extends Command
 
         return $files;
     }
+
     /**
      * Check file types from a list of files
      *
-     * @param array $files Array of files to be checked
-     * @param string $ext File extension to be tested for
+     * @param array  $files Array of files to be checked
+     * @param string $ext   File extension to be tested for
      *
      * @return array Files that passed test
      */
@@ -615,6 +615,7 @@ class Import extends Command
         }
         return $passed;
     }
+
     /**
      * Extracts the header of a CATXML file
      *
@@ -650,6 +651,7 @@ class Import extends Command
         }
         return $headerInformationNodes;
     }
+
     /**
      * Cleans up after the import process, as needed
      */
@@ -662,6 +664,7 @@ class Import extends Command
             $unzip->removeDir($this->directoryToCleanUp);
         }
     }
+
     /**
      * Sends reporting mail about which files were imported
      * todo parentclass
@@ -694,27 +697,27 @@ class Import extends Command
                 );
                 // Start assembling the mail message
                 $message = sprintf(
-                    $this->getLanguageService()->getLL('import.mail.intro'),
+                        $this->getLanguageService()->getLL('import.mail.intro'),
                         date('d.m.Y H:i:s', $GLOBALS['EXEC_TIME']),
                         $GLOBALS['TYPO3_CONF_VARS']['SYS']['sitename']
-                ) . "\n\n";
+                    ) . "\n\n";
                 foreach ($this->filesImported as $file => $fileInformation) {
                     if (isset($fileInformation['error'])) {
                         $status = $this->getLanguageService()->getLL('import.mail.error');
                         $message .= '[' . $status . '] ' . sprintf(
-                            $this->getLanguageService()->getLL('import.mail.file'),
+                                $this->getLanguageService()->getLL('import.mail.file'),
                                 $file
-                        ) . "\n";
+                            ) . "\n";
                         $message .= "\t" . sprintf(
-                            $this->getLanguageService()->getLL('import.mail.import.failed'),
+                                $this->getLanguageService()->getLL('import.mail.import.failed'),
                                 $fileInformation['error']
-                        ) . "\n";
+                            ) . "\n";
                     } else {
                         $status = $this->getLanguageService()->getLL('import.mail.ok');
                         $message .= '[' . $status . '] ' . sprintf(
-                            $this->getLanguageService()->getLL('import.mail.file'),
+                                $this->getLanguageService()->getLL('import.mail.file'),
                                 $file
-                        ) . "\n";
+                            ) . "\n";
                         // Get the workspace's name and add workspace information
                         if ($fileInformation['workspace'] == 0) {
                             $workspaceName = 'LIVE';
@@ -726,15 +729,15 @@ class Import extends Command
                             }
                         }
                         $message .= "\t" . sprintf(
-                            $this->getLanguageService()->getLL('import.mail.workspace'),
+                                $this->getLanguageService()->getLL('import.mail.workspace'),
                                 $workspaceName,
                                 $fileInformation['workspace']
-                        ) . "\n";
+                            ) . "\n";
                         // Add language information
                         $message .= "\t" . sprintf(
-                            $this->getLanguageService()->getLL('import.mail.language'),
+                                $this->getLanguageService()->getLL('import.mail.language'),
                                 $fileInformation['language']
-                        ) . "\n";
+                            ) . "\n";
                         // Get configuration's name and add configuration information
                         if (isset($l10nConfigurations[$fileInformation['configuration']])) {
                             $configurationName = $l10nConfigurations[$fileInformation['configuration']]['title'];
@@ -742,10 +745,10 @@ class Import extends Command
                             $configurationName = $this->getLanguageService()->getLL('import.mail.l10nconfig.unknown');
                         }
                         $message .= "\t" . sprintf(
-                            $this->getLanguageService()->getLL('import.mail.l10nconfig'),
+                                $this->getLanguageService()->getLL('import.mail.l10nconfig'),
                                 $configurationName,
-                            $fileInformation['configuration']
-                        ) . "\n";
+                                $fileInformation['configuration']
+                            ) . "\n";
                     }
                 }
                 // Add signature
@@ -767,6 +770,7 @@ class Import extends Command
             }
         }
     }
+
     /**
      * Get DatabaseConnection instance - $GLOBALS['TYPO3_DB']
      *
