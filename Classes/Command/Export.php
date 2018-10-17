@@ -32,6 +32,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Exception;
 use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -56,7 +57,8 @@ class Export extends Command
                 'config',
                 'c',
                 InputOption::VALUE_OPTIONAL,
-                "UIDs of the localization manager configurations to be used for export. Comma seperated values, no spaces.\nDefault is EXTCONF which means values are taken from extension configuration."
+                "UIDs of the localization manager configurations to be used for export. Comma seperated values, no spaces.\nDefault is EXTCONF which means values are taken from extension configuration.",
+                'EXTCONF'
             )
             ->addOption(
                 'forcedSourceLanguage',
@@ -68,14 +70,16 @@ class Export extends Command
                 'format',
                 null,
                 InputOption::VALUE_OPTIONAL,
-                "Format for export of translatable data can be:\n CATXML = XML for translation tools (default)\n EXCEL = Microsoft XML format"
+                "Format for export of translatable data can be:\n CATXML = XML for translation tools (default)\n EXCEL = Microsoft XML format",
+                'CATXML'
             )
             ->addOption('hidden', null, InputOption::VALUE_NONE, 'Do not export hidden contents')
             ->addOption(
                 'srcPID',
                 'p',
                 InputOption::VALUE_OPTIONAL,
-                'UID of the page used during export. Needs configuration depth to be set to "current page" Default = 0'
+                'UID of the page used during export. Needs configuration depth to be set to "current page" Default = 0',
+                0
             )
             ->addOption(
                 'target',
@@ -88,7 +92,8 @@ class Export extends Command
                 'workspace',
                 'w',
                 InputOption::VALUE_OPTIONAL,
-                'UID of the workspace used during export. Default = 0'
+                'UID of the workspace used during export. Default = 0',
+                0
             );
     }
 
@@ -107,10 +112,10 @@ class Export extends Command
         $extConf = $this->getExtConf();
 
         // get format (CATXML,EXCEL)
-        $format = $input->getOption('format') ?? 'CATXML';
+        $format = $input->getOption('format');
 
         // get l10ncfg command line takes precedence over extConf
-        $l10ncfg = $input->getOption('config') ?? 'EXTCONF';
+        $l10ncfg = $input->getOption('config');
 
         if ($l10ncfg !== 'EXTCONF' && !empty($l10ncfg)) {
             //export single
@@ -163,7 +168,12 @@ class Export extends Command
                     $output->writeln('<error>' . $this->getLanguageService()->getLL('error.target_language_id_integer.msg') . '</error>');
                     return;
                 }
-                $msg .= $this->exportXML($l10ncfg, $tlang, $format, $input, $output);
+                try {
+                    $msg .= $this->exportXML($l10ncfg, $tlang, $format, $input, $output);
+                } catch(Exception $e){
+                    $output->writeln('<error>' . $e->getMessage() . '</error>');
+                    return;
+                }
             }
         }
 
@@ -175,6 +185,7 @@ class Export extends Command
     }
 
     /**
+     * todo parentclass?
      * The function loadExtConf loads the extension configuration.
      *
      * @return array
@@ -221,6 +232,7 @@ class Export extends Command
      * @param OutputInterface $output
      *
      * @return string An error message in case of failure
+     * @throws Exception
      */
     protected function exportXML($l10ncfg, $tlang, $format, $input, $output)
     {
@@ -240,8 +252,7 @@ class Export extends Command
                 /** @var ExportViewInterface $l10nmgrGetXML */
                 $l10nmgrGetXML = GeneralUtility::makeInstance(ExcelXmlView::class, $l10nmgrCfgObj, $tlang);
             } else {
-                $output->writeln("<error>Wrong format. Use 'CATXML' or 'EXCEL' </error>");
-                return;
+                throw new Exception("Wrong format. Use 'CATXML' or 'EXCEL'");
             }
             // Check  if sourceLangStaticId is set in configuration and set setForcedSourceLanguage to this value
             if ($l10nmgrCfgObj->getData('sourceLangStaticId') && ExtensionManagementUtility::isLoaded('static_info_tables')) {
@@ -361,6 +372,8 @@ class Export extends Command
     }
 
     /**
+     * fixme
+     *
      * The function emailNotification sends an email with a translation job to the recipient specified in the extension config.
      *
      * @param string            $xmlFileName   Name of the XML file
