@@ -156,7 +156,7 @@ class Import extends L10nCommand
         // Get the task parameter from either the new or the old input style
         // The default is in the configure()
 
-        if ($input->getOption('task') == 'importString' || $input->getOption('task') == 'importFile' || $input->getOption('task') == 'preview') {
+        if ($input->getOption('task') === 'importString' || $input->getOption('task') === 'importFile' || $input->getOption('task') === 'preview') {
             $callParameters['task'] = $input->getOption('task');
         } else {
             $output->writeln('<error> The task is not set correctly</error>');
@@ -167,7 +167,6 @@ class Import extends L10nCommand
         $callParameters['preview'] = $input->getOption('preview');
 
         // Get the XML string
-        //todo default
         $callParameters['string'] = stripslashes($input->getOption('string'));
 
         // Get the path to XML or ZIP file
@@ -194,7 +193,6 @@ class Import extends L10nCommand
      */
     protected function getWsIdFromCATXML($xml)
     {
-        var_dump($xml);
         preg_match('/<t3_workspaceId>([^<]+)/', $xml, $matches);
         if (!empty($matches)) {
             return $matches[1];
@@ -335,7 +333,7 @@ class Import extends L10nCommand
         $out = '';
         $xmlFilesArr = $this->gatherAllFiles($callParameters['file']);
 
-        if (count($xmlFilesArr) == 0) {
+        if (empty($xmlFilesArr)) {
             throw new Exception("\nNo files to import! Either point to a file using the --file option or define a FTP server to get the files from");
         }
 
@@ -430,7 +428,7 @@ class Import extends L10nCommand
         // Clean up after import
         $this->importCleanUp();
 
-        // Means OK
+        // Means Error
         if (!empty($out)) {
             throw new Exception($out);
         }
@@ -439,6 +437,7 @@ class Import extends L10nCommand
     /**
      * Gather all the files to be imported, depending on the call parameters
      *
+     * @param $file
      * @return array List of files to import
      * @throws Exception
      */
@@ -629,10 +628,13 @@ class Import extends L10nCommand
     }
 
     /**
+     * This method is unused
+     *
      * Sends reporting mail about which files were imported
      */
     protected function sendMailNotification()
     {
+        return;
         // Send mail only if notifications are active and at least one file was imported
         if ($this->extensionConfiguration['enable_notification'] && count($this->filesImported) > 0) {
             // If at least a recipient is indeed defined, proceed with sending the mail
