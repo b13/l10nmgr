@@ -29,21 +29,14 @@ use Localizationteam\L10nmgr\Model\MkPreviewLinkService;
 use Localizationteam\L10nmgr\Model\TranslationData;
 use Localizationteam\L10nmgr\Model\TranslationDataFactory;
 use Localizationteam\L10nmgr\Zip;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Exception;
-use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-class Import extends Command
+class Import extends L10nCommand
 {
-    /**
-     * @var LanguageService
-     */
-    protected $languageService;
     /**
      * @var array Extension's configuration as from the EM
      */
@@ -116,7 +109,7 @@ class Import extends Command
         $callParameters = $this->initializeCallParameters($input, $output);
 
         $msg = '';
-        
+
         try {
             switch ($callParameters['task']) {
                 case 'importString':
@@ -189,15 +182,6 @@ class Import extends Command
         $callParameters['sourcePid'] = $input->getOption('srcPID');
 
         return $callParameters;
-    }
-    /**
-     * Gets the current backend user.
-     *
-     * @return BackendUserAuthentication
-     */
-    protected function getBackendUser()
-    {
-        return $GLOBALS['BE_USER'];
     }
 
     /**
@@ -297,25 +281,6 @@ class Import extends Command
             $out = 1;
         } //Means OK if preview = 0
         return $out;
-    }
-
-    /**
-     * getter/setter for LanguageService object
-     *
-     * @return LanguageService $languageService
-     *
-     * todo parentclass
-     */
-    protected function getLanguageService()
-    {
-        if (!$this->languageService instanceof LanguageService) {
-            $this->languageService = GeneralUtility::makeInstance(LanguageService::class);
-            $fileRef = 'EXT:l10nmgr/Resources/Private/Language/Cli/locallang.xml';
-            $this->languageService->includeLLFile($fileRef);
-            $this->languageService->init('');
-        }
-
-        return $this->languageService;
     }
 
     /**
@@ -667,7 +632,6 @@ class Import extends Command
 
     /**
      * Sends reporting mail about which files were imported
-     * todo parentclass
      */
     protected function sendMailNotification()
     {
@@ -784,18 +748,5 @@ class Import extends Command
     {
         GeneralUtility::logDeprecatedFunction();
         return $GLOBALS['TYPO3_DB'];
-    }
-
-    /**
-     * todo parentclass?
-     * The function loadExtConf loads the extension configuration.
-     *
-     * @return array
-     */
-    protected function getExtConf()
-    {
-        return empty($GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['l10nmgr'])
-            ? unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['l10nmgr'])
-            : $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['l10nmgr'];
     }
 }

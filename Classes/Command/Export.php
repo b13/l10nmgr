@@ -25,25 +25,18 @@ use Localizationteam\L10nmgr\Model\L10nConfiguration;
 use Localizationteam\L10nmgr\View\CatXmlView;
 use Localizationteam\L10nmgr\View\ExcelXmlView;
 use Localizationteam\L10nmgr\View\ExportViewInterface;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
-use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Exception;
-use TYPO3\CMS\Core\Localization\LanguageService;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\MathUtility;
 
-class Export extends Command
+class Export extends L10nCommand
 {
-    /**
-     * @var LanguageService
-     */
-    protected $languageService;
 
     /**
      * Configure the command by defining the name, options and arguments
@@ -170,7 +163,7 @@ class Export extends Command
                 }
                 try {
                     $msg .= $this->exportXML($l10ncfg, $tlang, $format, $input, $output);
-                } catch(Exception $e){
+                } catch (Exception $e) {
                     $output->writeln('<error>' . $e->getMessage() . '</error>');
                     return;
                 }
@@ -182,45 +175,6 @@ class Export extends Command
         $time = $time_end - $time_start;
         $output->writeln($msg . LF);
         $output->writeln(sprintf($this->getLanguageService()->getLL('export.process.duration.message'), $time) . LF);
-    }
-
-    /**
-     * todo parentclass?
-     * The function loadExtConf loads the extension configuration.
-     *
-     * @return array
-     */
-    protected function getExtConf()
-    {
-        return empty($GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['l10nmgr'])
-            ? unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['l10nmgr'])
-            : $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['l10nmgr'];
-    }
-
-    /**
-     * getter/setter for LanguageService object
-     *
-     * @return LanguageService $languageService
-     */
-    protected function getLanguageService()
-    {
-        if (!$this->languageService instanceof LanguageService) {
-            $this->languageService = GeneralUtility::makeInstance(LanguageService::class);
-        }
-        $fileRef = 'EXT:l10nmgr/Resources/Private/Language/Cli/locallang.xml';
-        $this->languageService->includeLLFile($fileRef);
-        $this->languageService->init('');
-        return $this->languageService;
-    }
-
-    /**
-     * Gets the current backend user.
-     *
-     * @return BackendUserAuthentication
-     */
-    protected function getBackendUser()
-    {
-        return $GLOBALS['BE_USER'];
     }
 
     /**
