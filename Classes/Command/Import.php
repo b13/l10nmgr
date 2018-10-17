@@ -141,7 +141,6 @@ class Import extends L10nCommand
         $output->writeln($msg);
         $output->writeln(sprintf($this->getLanguageService()->getLL('import.process.duration.message'), $time));
         // Send reporting mail
-        // todo parentclass
 //        $this->sendMailNotification();
     }
 
@@ -343,7 +342,6 @@ class Import extends L10nCommand
         foreach ($xmlFilesArr as $xmlFile) {
             try {
                 $xmlFileHead = $this->getXMLFileHead($xmlFile);
-                return;
                 // Set workspace to the required workspace ID from CATXML:
                 $this->getBackendUser()->setWorkspace($xmlFileHead['t3_workspaceId'][0]['XMLvalue']);
                 // Set import language to t3_sysLang from XML
