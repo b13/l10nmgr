@@ -19,8 +19,13 @@ namespace Localizationteam\L10nmgr\Model;
  * GNU General Public License for more details.
  * This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
+
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerAwareTrait;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Configuration\FlexForm\FlexFormTools;
+use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\RelationHandler;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
@@ -32,10 +37,12 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * @authorKasper Skaarhoj <kasperYYYY@typo3.com>
  * @authorDaniel Pötzinger <development@aoemedia.de>
  * @packageTYPO3
- * @subpackage tx_l10nmgr
+ * @subpackage   tx_l10nmgr
  */
-class L10nBaseService
+class L10nBaseService implements LoggerAwareInterface
 {
+    use LoggerAwareTrait;
+
     protected static $targetLanguageID = null;
     public $lastTCEMAINCommandsCount;
     /**
@@ -89,7 +96,7 @@ class L10nBaseService
      * Save the translation
      *
      * @param L10nConfiguration $l10ncfgObj
-     * @param TranslationData $translationObj
+     * @param TranslationData   $translationObj
      */
     public function saveTranslation(L10nConfiguration $l10ncfgObj, TranslationData $translationObj)
     {
@@ -122,6 +129,28 @@ class L10nBaseService
     }
 
     /**
+     * Getter for $importAsDefaultLanguage
+     *
+     * @return boolean
+     */
+    public function getImportAsDefaultLanguage()
+    {
+        return $this->importAsDefaultLanguage;
+    }
+
+    /**
+     * Setter for $importAsDefaultLanguage
+     *
+     * @param boolean $importAsDefaultLanguage
+     *
+     * @return void
+     */
+    public function setImportAsDefaultLanguage($importAsDefaultLanguage)
+    {
+        $this->importAsDefaultLanguage = $importAsDefaultLanguage;
+    }
+
+    /**
      * Function that iterates over all page records that are given within the import data
      * and translate all pages and content elements
      * beforehand so ordering and container elements work just as expected.
@@ -130,7 +159,7 @@ class L10nBaseService
      * which would be expected to be new)
      *
      * @param L10nConfiguration $configurationObject
-     * @param TranslationData $translationData
+     * @param TranslationData   $translationData
      */
     protected function preTranslateAllContent(L10nConfiguration $configurationObject, TranslationData $translationData)
     {
@@ -236,7 +265,7 @@ class L10nBaseService
      * This also allows to import data of records that have been added in TYPO3 in the meantime.
      *
      * @param L10nConfiguration $configurationObject
-     * @param TranslationData $translationData
+     * @param TranslationData   $translationData
      */
     protected function remapInputDataForExistingTranslations(
         L10nConfiguration $configurationObject,
@@ -277,7 +306,7 @@ class L10nBaseService
     /**
      * Submit incoming content to database. Must match what is available in $accum.
      *
-     * @param array $accum Translation configuration
+     * @param array $accum      Translation configuration
      * @param array $inputArray Array with incoming translation. Must match what is found in $accum
      *
      * @return mixed False if error - else flexFormDiffArray (if $inputArray was an array and processing was performed.)
@@ -292,38 +321,15 @@ class L10nBaseService
     }
 
     /**
-     * Getter for $importAsDefaultLanguage
-     *
-     * @return boolean
-     */
-    public function getImportAsDefaultLanguage()
-    {
-        return $this->importAsDefaultLanguage;
-    }
-
-    /**
-     * Setter for $importAsDefaultLanguage
-     *
-     * @param boolean $importAsDefaultLanguage
-     *
-     * @return void
-     */
-    public function setImportAsDefaultLanguage($importAsDefaultLanguage)
-    {
-        $this->importAsDefaultLanguage = $importAsDefaultLanguage;
-    }
-
-    /**
      * Submit incoming content as default language to database. Must match what is available in $accum.
      *
-     * @param array $accum Translation configuration
+     * @param array $accum      Translation configuration
      * @param array $inputArray Array with incoming translation. Must match what is found in $accum
      *
      * @return mixed False if error - else flexFormDiffArray (if $inputArray was an array and processing was performed.)
      */
     protected function _submitContentAsDefaultLanguageAndGetFlexFormDiff($accum, $inputArray)
     {
-        global $TCA;
         if (is_array($inputArray)) {
             // Initialize:
             /** @var FlexFormTools $flexToolObj */
@@ -348,7 +354,7 @@ class L10nBaseService
                                 if (is_array($tData) && array_key_exists($key, $inputArray[$table][$elementUid])) {
                                     list($Ttable, $TuidString, $Tfield, $Tpath) = explode(':', $key);
                                     list($Tuid, $Tlang, $TdefRecord) = explode('/', $TuidString);
-                                    if (!$this->createTranslationAlsoIfEmpty && $inputArray[$table][$elementUid][$key] == '' && $Tuid == 'NEW' && $Tfield !== trim($TCA[$Ttable]['ctrl']['label'])) {
+                                    if (!$this->createTranslationAlsoIfEmpty && $inputArray[$table][$elementUid][$key] == '' && $Tuid == 'NEW' && $Tfield !== trim($GLOBALS['TCA'][$Ttable]['ctrl']['label'])) {
                                         //if data is empty and the field is not the label field of that particular table, do not save it
                                         unset($inputArray[$table][$elementUid][$key]);
                                         continue;
@@ -364,7 +370,7 @@ class L10nBaseService
                                             $inputArray[$table][$elementUid][$key]);
                                         $_flexFormDiffArray[$key] = [
                                             'translated' => $inputArray[$table][$elementUid][$key],
-                                            'default'    => $tData['defaultValue'],
+                                            'default' => $tData['defaultValue'],
                                         ];
                                     } else {
                                         $TCEmain_data[$Ttable][$elementUid][$Tfield] = $inputArray[$table][$elementUid][$key];
@@ -410,8 +416,8 @@ class L10nBaseService
                 $tce->process_datamap();
             }
             if (count($tce->errorLog)) {
-                GeneralUtility::sysLog(__FILE__ . ': ' . __LINE__ . ': TCEmain update errors: ' . GeneralUtility::arrayToLogString($tce->errorLog),
-                    'l10nmgr');
+                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain update errors: ' . implode(', ',
+                        $tce->errorLog));
             }
             if (count($tce->autoVersionIdMap) && count($_flexFormDiffArray)) {
                 foreach ($_flexFormDiffArray as $key => $value) {
@@ -435,14 +441,13 @@ class L10nBaseService
     /**
      * Submit incoming content as translated language to database. Must match what is available in $accum.
      *
-     * @param array $accum Translation configuration
+     * @param array $accum      Translation configuration
      * @param array $inputArray Array with incoming translation. Must match what is found in $accum
      *
      * @return mixed False if error - else flexFormDiffArray (if $inputArray was an array and processing was performed.)
      */
     protected function _submitContentAsTranslatedLanguageAndGetFlexFormDiff($accum, $inputArray)
     {
-        global $TCA;
         if (is_array($inputArray)) {
             // Initialize:
             /** @var FlexFormTools $flexToolObj */
@@ -458,8 +463,7 @@ class L10nBaseService
             foreach ($accum as $pId => $page) {
                 foreach ($accum[$pId]['items'] as $table => $elements) {
                     foreach ($elements as $elementUid => $data) {
-                        $element = BackendUtility::getRecordRaw($table,
-                            'uid = ' . (int)$elementUid . ($TCA[$table]['delete'] ? ' AND ' . $TCA[$table]['delete'] . '=0' : ''));
+                        $element = $this->getRawRecord((string)$table, (int)$elementUid);
                         $hooks = $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['beforeDataFieldsTranslated'];
                         if (is_array($hooks)) {
                             foreach ($hooks as $hookObj) {
@@ -471,10 +475,11 @@ class L10nBaseService
                         }
                         if (is_array($data['fields'])) {
                             foreach ($data['fields'] as $key => $tData) {
-                                if (is_array($tData) && is_array($inputArray[$table][$elementUid]) && array_key_exists($key, $inputArray[$table][$elementUid])) {
+                                if (is_array($tData) && is_array($inputArray[$table][$elementUid]) && array_key_exists($key,
+                                        $inputArray[$table][$elementUid])) {
                                     list($Ttable, $TuidString, $Tfield, $Tpath) = explode(':', $key);
                                     list($Tuid, $Tlang, $TdefRecord) = explode('/', $TuidString);
-                                    if (!$this->createTranslationAlsoIfEmpty && $inputArray[$table][$elementUid][$key] == '' && $Tuid == 'NEW' && $Tfield !== trim($TCA[$Ttable]['ctrl']['label'])) {
+                                    if (!$this->createTranslationAlsoIfEmpty && $inputArray[$table][$elementUid][$key] == '' && $Tuid == 'NEW' && $Tfield !== trim($GLOBALS['TCA'][$Ttable]['ctrl']['label'])) {
                                         //if data is empty and the field is not the label field of that particular table, do not save it
                                         unset($inputArray[$table][$elementUid][$key]);
                                         continue;
@@ -500,8 +505,7 @@ class L10nBaseService
                                                 }
                                             }
                                         } elseif ($table === 'sys_file_reference') {
-                                            $element = BackendUtility::getRecordRaw($table,
-                                                'uid = ' . (int)$elementUid . ' AND deleted = 0');
+                                            $element = $this->getRawRecord($table, $elementUid);
                                             if ($element['uid_foreign'] && $element['tablenames'] && $element['fieldname']) {
                                                 if ($element['tablenames'] === 'pages') {
                                                     if (isset($this->TCEmain_cmd[$table][$elementUid])) {
@@ -510,9 +514,19 @@ class L10nBaseService
                                                     $this->TCEmain_cmd[$table][$elementUid]['localize'] = $Tlang;
                                                     $TCEmain_data[$table][$TuidString]['tablenames'] = 'pages';
                                                 } else {
-                                                    $parent = BackendUtility::getRecordRaw($element['tablenames'],
-                                                        $TCA[$element['tablenames']]['ctrl']['transOrigPointerField'] . ' = ' . (int)$element['uid_foreign'] .
-                                                        ' AND deleted = 0 AND sys_language_uid = ' . (int)$Tlang);
+                                                    $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($element['tablenames']);
+                                                    $parent = $queryBuilder->select('*')
+                                                        ->from($element['tablenames'])
+                                                        ->where(
+                                                            $queryBuilder->expr()->eq($GLOBALS['TCA'][$element['tablenames']]['ctrl']['transOrigPointerField'],
+                                                                $queryBuilder->createNamedParameter((int)$element['uid_foreign'],
+                                                                    \PDO::PARAM_INT)),
+                                                            $queryBuilder->expr()->eq('sys_language_uid',
+                                                                $queryBuilder->createNamedParameter((int)$Tlang,
+                                                                    \PDO::PARAM_INT))
+                                                        )
+                                                        ->execute()
+                                                        ->fetch();
                                                     if ($parent['uid'] > 0) {
                                                         if (isset($this->TCEmain_cmd[$element['tablenames']][$element['uid_foreign']])) {
                                                             unset($this->TCEmain_cmd[$element['tablenames']][$element['uid_foreign']]);
@@ -530,11 +544,12 @@ class L10nBaseService
                                             /** @var $relationHandler RelationHandler */
                                             // integrators have to make sure to configure fields of parent elements properly
                                             // so they will do translations of their children automatically when translated
-                                            if (!empty($TCA[$table]['columns'][$key])) {
-                                                $configuration = $TCA[$table]['columns'][$key]['config'];
+                                            if (!empty($GLOBALS['TCA'][$table]['columns'][$key])) {
+                                                $configuration = $GLOBALS['TCA'][$table]['columns'][$key]['config'];
                                                 if ($configuration['foreign_table']) {
                                                     $relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
-                                                    $relationHandler->start($element[$key], $configuration['foreign_table'],
+                                                    $relationHandler->start($element[$key],
+                                                        $configuration['foreign_table'],
                                                         $configuration['MM'], $elementUid, $table, $configuration);
                                                     $relationHandler->processDeletePlaceholder();
                                                     $referenceUids = $relationHandler->tableArray[$configuration['foreign_table']];
@@ -553,7 +568,7 @@ class L10nBaseService
                                         if (is_array($hooks)) {
                                             foreach ($hooks as $hookObj) {
                                                 $parameters = [
-                                                    'data'        => $data,
+                                                    'data' => $data,
                                                     'TCEmain_cmd' => $this->TCEmain_cmd,
                                                 ];
                                                 $this->TCEmain_cmd = GeneralUtility::callUserFunction($hookObj,
@@ -572,7 +587,7 @@ class L10nBaseService
                                             $inputArray[$table][$elementUid][$key]);
                                         $_flexFormDiffArray[$key] = [
                                             'translated' => $inputArray[$table][$elementUid][$key],
-                                            'default'    => $tData['defaultValue'],
+                                            'default' => $tData['defaultValue'],
                                         ];
                                     } else {
                                         $TCEmain_data[$Ttable][$TuidString][$Tfield] = $inputArray[$table][$elementUid][$key];
@@ -593,7 +608,7 @@ class L10nBaseService
                             foreach ($hooks as $hookObj) {
                                 $parameters = [
                                     'TCEmain_data' => $TCEmain_data,
-                                    'TCEmain_cmd'  => $this->TCEmain_cmd,
+                                    'TCEmain_cmd' => $this->TCEmain_cmd,
                                 ];
                                 $this->TCEmain_cmd = GeneralUtility::callUserFunction($hookObj, $parameters, $this);
                             }
@@ -620,17 +635,33 @@ class L10nBaseService
                 }
             }
             // Before remapping
-            if (TYPO3_DLOG) {
-                GeneralUtility::sysLog(__FILE__ . ': ' . __LINE__ . ': TCEmain_data before remapping: ' . GeneralUtility::arrayToLogString($TCEmain_data),
-                    'l10nmgr');
-            }
+            $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain_data before remapping: ' . implode(", ",
+                    $TCEmain_data));
             // Remapping those elements which are new:
             $this->lastTCEMAINCommandsCount = 0;
             foreach ($TCEmain_data as $table => $items) {
                 foreach ($TCEmain_data[$table] as $TuidString => $fields) {
                     if ($table === 'sys_file_reference' && $fields['tablenames'] === 'pages') {
-                        $parent = BackendUtility::getRecordRaw('pages_language_overlay',
-                            'pid = ' . (int)$element['pid'] . ' AND deleted = 0 AND sys_language_uid = ' . (int)$Tlang);
+
+                        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('pages_language_overlay');
+                        $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
+
+                        $parent = $queryBuilder
+                            ->select('*')
+                            ->from('pages_language_overlay')
+                            ->where(
+                                $queryBuilder->expr()->eq(
+                                    'pid',
+                                    $queryBuilder->createNamedParameter((int)$element['pid'], \PDO::PARAM_INT)
+                                ),
+                                $queryBuilder->expr()->eq(
+                                    'sys_language_uid',
+                                    $queryBuilder->createNamedParameter((int)$Tlang, \PDO::PARAM_INT)
+                                )
+                            )
+                            ->execute()
+                            ->fetch();
+
                         if ($parent['uid']) {
                             $fields['tablenames'] = 'pages_language_overlay';
                             $fields['uid_foreign'] = $parent['uid'];
@@ -642,36 +673,53 @@ class L10nBaseService
                         if ($tce->copyMappingArray_merged[$table][$TdefRecord]) {
                             $TCEmain_data[$table][BackendUtility::wsMapId($table,
                                 $tce->copyMappingArray_merged[$table][$TdefRecord])] = $fields;
-                        } else if ($this->childMappingArray[$table][$TdefRecord]) {
-                            if ($this->childMappingArray[$table][$TdefRecord] === true) {
-                                $translatedRecordRaw = BackendUtility::getRecordRaw($table,
-                                    $TCA[$table]['ctrl']['transOrigPointerField'] . ' = ' . (int)$TdefRecord . ' AND deleted = 0 AND sys_language_uid = ' . (int)$Tlang);
-                                if ($translatedRecordRaw['uid']) {
-                                    $this->childMappingArray[$table][$TdefRecord] = $translatedRecordRaw['uid'];
-                                }
-                            }
-                            if ($this->childMappingArray[$table][$TdefRecord]) {
-                                if ($this->extensionConfiguration['enable_neverHideAtCopy'] == 1 &&
-                                    $TCA[$table]['ctrl']['enablecolumns'] &&
-                                    $TCA[$table]['ctrl']['enablecolumns']['disabled']) {
-                                    $fields[$TCA[$table]['ctrl']['enablecolumns']['disabled']] = 0;
-                                }
-                                $TCEmain_data[$table][BackendUtility::wsMapId($table,
-                                    $this->childMappingArray[$table][$TdefRecord])] = $fields;
-                            }
                         } else {
-                            GeneralUtility::sysLog(__FILE__ . ': ' . __LINE__ . ': Record "' . $table . ':' . $TdefRecord . '" was NOT localized as it should have been!',
-                                'l10nmgr');
+                            if ($this->childMappingArray[$table][$TdefRecord]) {
+                                if ($this->childMappingArray[$table][$TdefRecord] === true) {
+
+                                    $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
+                                    $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
+
+                                    $translatedRecordRaw = $queryBuilder
+                                        ->select('*')
+                                        ->from($table)
+                                        ->where(
+                                            $queryBuilder->expr()->eq(
+                                                $GLOBALS['TCA'][$table]['ctrl']['transOrigPointerField'],
+                                                $queryBuilder->createNamedParameter((int)$TdefRecord, \PDO::PARAM_INT)
+                                            ),
+                                            $queryBuilder->expr()->eq(
+                                                'sys_language_uid',
+                                                $queryBuilder->createNamedParameter((int)$Tlang, \PDO::PARAM_INT)
+                                            )
+                                        )
+                                        ->execute()
+                                        ->fetch();
+
+                                    if ($translatedRecordRaw['uid']) {
+                                        $this->childMappingArray[$table][$TdefRecord] = $translatedRecordRaw['uid'];
+                                    }
+                                }
+                                if ($this->childMappingArray[$table][$TdefRecord]) {
+                                    if ($this->extensionConfiguration['enable_neverHideAtCopy'] == 1 &&
+                                        $GLOBALS['TCA'][$table]['ctrl']['enablecolumns'] &&
+                                        $GLOBALS['TCA'][$table]['ctrl']['enablecolumns']['disabled']) {
+                                        $fields[$GLOBALS['TCA'][$table]['ctrl']['enablecolumns']['disabled']] = 0;
+                                    }
+                                    $TCEmain_data[$table][BackendUtility::wsMapId($table,
+                                        $this->childMappingArray[$table][$TdefRecord])] = $fields;
+                                }
+                            } else {
+                                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': Record "' . $table . ':' . $TdefRecord . '" was NOT localized as it should have been!');
+                            }
                         }
                         unset($TCEmain_data[$table][$TuidString]);
                     }
                 }
             }
             // After remapping
-            if (TYPO3_DLOG) {
-                GeneralUtility::sysLog(__FILE__ . ': ' . __LINE__ . ': TCEmain_data after remapping: ' . GeneralUtility::arrayToLogString($TCEmain_data),
-                    'l10nmgr');
-            }
+            $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain_data after remapping: ' . implode(", ",
+                    $TCEmain_data));
             // Now, submitting translation data:
             /** @var DataHandler $tce */
             $tce = GeneralUtility::makeInstance(DataHandler::class);
@@ -687,14 +735,12 @@ class L10nBaseService
             }
             self::$targetLanguageID = null;
             if (count($tce->errorLog)) {
-                GeneralUtility::sysLog(__FILE__ . ': ' . __LINE__ . ': TCEmain update errors: ' . GeneralUtility::arrayToLogString($tce->errorLog),
-                    'l10nmgr');
+                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain update errors: ' . implode(', ',
+                        $tce->errorLog));
             }
             if (count($tce->autoVersionIdMap) && count($_flexFormDiffArray)) {
-                if (TYPO3_DLOG) {
-                    GeneralUtility::sysLog(__FILE__ . ': ' . __LINE__ . ': flexFormDiffArry: ' . GeneralUtility::arrayToLogString($this->flexFormDiffArray),
-                        'l10nmgr');
-                }
+                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': flexFormDiffArry: ' . implode(', ',
+                        $this->flexFormDiffArray));
                 foreach ($_flexFormDiffArray as $key => $value) {
                     list($Ttable, $Tuid, $Trest) = explode(':', $key, 3);
                     if ($tce->autoVersionIdMap[$Ttable][$Tuid]) {
@@ -702,12 +748,9 @@ class L10nBaseService
                         unset($_flexFormDiffArray[$key]);
                     }
                 }
-                if (TYPO3_DLOG) {
-                    GeneralUtility::sysLog(__FILE__ . ': ' . __LINE__ . ': autoVersionIdMap: ' . $tce->autoVersionIdMap,
-                        'l10nmgr');
-                    GeneralUtility::sysLog(__FILE__ . ': ' . __LINE__ . ': _flexFormDiffArray: ' . GeneralUtility::arrayToLogString($_flexFormDiffArray),
-                        'l10nmgr');
-                }
+                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': autoVersionIdMap: ' . $tce->autoVersionIdMap);
+                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': _flexFormDiffArray: ' . implode(', ',
+                        $_flexFormDiffArray));
             }
             // Should be empty now - or there were more information in the incoming array than there should be!
             if (count($inputArray)) {
@@ -727,28 +770,71 @@ class L10nBaseService
      */
     protected function recursivelyCheckForRelationParents($element, $Tlang, $parentField, $childrenField)
     {
-        global $TCA;
         $this->depthCounter++;
         if ($this->depthCounter < 100 && !isset($this->checkedParentRecords[$parentField][$element['uid']])) {
             $this->checkedParentRecords[$parentField][$element['uid']] = true;
             $translatedParent = [];
             if ($element[$parentField] > 0) {
-                $translatedParent = BackendUtility::getRecordRaw('tt_content',
-                    $TCA['tt_content']['ctrl']['transOrigPointerField'] . ' = ' . (int)$element[$parentField] .
-                    ' AND deleted = 0 AND sys_language_uid = ' . (int)$Tlang
-                );
+
+                $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
+                $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
+
+                $translatedParent = $queryBuilder
+                    ->select('*')
+                    ->from('tt_content')
+                    ->where(
+                        $queryBuilder->expr()->eq(
+                            $GLOBALS['TCA']['tt_content']['ctrl']['transOrigPointerField'],
+                            $queryBuilder->createNamedParameter((int)$element[$parentField], \PDO::PARAM_INT)
+                        ),
+                        $queryBuilder->expr()->eq(
+                            'sys_language_uid',
+                            $queryBuilder->createNamedParameter((int)$Tlang, \PDO::PARAM_INT)
+                        )
+                    )
+                    ->execute()
+                    ->fetch();
             }
             if ($translatedParent['uid'] > 0) {
                 $this->TCEmain_cmd['tt_content'][$translatedParent['uid']]['inlineLocalizeSynchronize'] = $childrenField . ',localize';
             } else {
                 if ($element[$parentField] > 0) {
-                    $parent = BackendUtility::getRecordRaw('tt_content',
-                        'uid = ' . (int)$element[$parentField] . ' AND deleted = 0');
+
+                    $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
+                    $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
+
+                    $parent = $this->getRawRecord('tt_content', (int)$element[$parentField]);
+
                     $this->recursivelyCheckForRelationParents($parent, $Tlang, $parentField, $childrenField);
                 } else {
                     $this->TCEmain_cmd['tt_content'][$element['uid']]['localize'] = $Tlang;
                 }
             }
         }
+    }
+
+    /**
+     * @param string $table
+     * @param int    $elementUid
+     * @return array
+     */
+    protected function getRawRecord(string $table, int $elementUid): array
+    {
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
+        $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
+
+        $row = $queryBuilder
+            ->select('*')
+            ->from($table)
+            ->where(
+                $queryBuilder->expr()->eq(
+                    'uid',
+                    $queryBuilder->createNamedParameter((int)$elementUid, \PDO::PARAM_INT)
+                )
+            )
+            ->execute()
+            ->fetch();
+
+        return $row ?: [];
     }
 }
