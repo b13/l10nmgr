@@ -1,4 +1,5 @@
 <?php
+
 namespace Localizationteam\L10nmgr\View;
 
 /***************************************************************
@@ -20,6 +21,7 @@ namespace Localizationteam\L10nmgr\View;
  * GNU General Public License for more details.
  * This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
+
 use Localizationteam\L10nmgr\Model\L10nConfiguration;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
@@ -78,7 +80,7 @@ abstract class AbstractExportView
     /**
      * @var array List of messages issued during rendering
      */
-    protected $internalMessages = array();
+    protected $internalMessages = [];
     /**
      * @var int
      */
@@ -86,6 +88,7 @@ abstract class AbstractExportView
 
     /**
      * AbstractExportView constructor.
+     *
      * @param L10nConfiguration $l10ncfgObj
      * @param int $sysLang
      */
@@ -137,7 +140,7 @@ abstract class AbstractExportView
         // get current date
         $date = time();
         // query to insert the data in the database
-        $field_values = array(
+        $field_values = [
             'source_lang' => (int)$this->forcedSourceLanguage ? (int)$this->forcedSourceLanguage : 0,
             'translation_lang' => (int)$this->sysLang,
             'crdate' => $date,
@@ -149,7 +152,7 @@ abstract class AbstractExportView
             'cruser_id' => (int)$this->l10ncfgObj->getData('cruser_id'),
             'filename' => (string)$this->getFilename(),
             'exportType' => (int)$this->exportType
-        );
+        ];
 
         $databaseConnection = GeneralUtility::makeInstance(ConnectionPool::class)
             ->getConnectionForTable('tx_l10nmgr_exportdata');
@@ -159,10 +162,10 @@ abstract class AbstractExportView
         );
 
         if (is_array($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['exportView'])) {
-            $params = array(
+            $params = [
                 'uid' => (int)$databaseConnection->lastInsertId('tx_l10nmgr_exportdata'),
                 'data' => $field_values
-            );
+            ];
             foreach ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['exportView'] as $classData) {
                 $postSaveProcessor = GeneralUtility::makeInstance($classData);
                 if ($postSaveProcessor instanceof PostSaveInterface) {
@@ -201,13 +204,18 @@ abstract class AbstractExportView
             $fileType = 'catxml';
         }
         if ($this->l10ncfgObj->getData('sourceLangStaticId') && ExtensionManagementUtility::isLoaded('static_info_tables')) {
-            $staticLangArr = BackendUtility::getRecord('static_languages',
-                $this->l10ncfgObj->getData('sourceLangStaticId'), 'lg_iso_2');
+            $staticLangArr = BackendUtility::getRecord(
+                'static_languages',
+                $this->l10ncfgObj->getData('sourceLangStaticId'),
+                'lg_iso_2'
+            );
         }
         if ($this->sysLang && ExtensionManagementUtility::isLoaded('static_info_tables')) {
             $targetLangSysLangArr = BackendUtility::getRecord('sys_language', $this->sysLang);
-            $targetLangArr = BackendUtility::getRecord('static_languages',
-                $targetLangSysLangArr['static_lang_isocode']);
+            $targetLangArr = BackendUtility::getRecord(
+                'static_languages',
+                $targetLangSysLangArr['static_lang_isocode']
+            );
         }
         // Set sourceLang for filename
         if (isset($staticLangArr['lg_iso_2']) && !empty($staticLangArr['lg_iso_2'])) {
@@ -263,7 +271,7 @@ abstract class AbstractExportView
      */
     public function renderExports()
     {
-        $content = array();
+        $content = [];
         $exports = $this->fetchExports();
         foreach ($exports AS $export => $exportData) {
             $content[$export] = sprintf('
@@ -354,6 +362,7 @@ abstract class AbstractExportView
 
     /**
      * Returns the Backend User
+     *
      * @return BackendUserAuthentication
      */
     protected function getBackendUser()
@@ -368,19 +377,28 @@ abstract class AbstractExportView
      */
     public function renderExportsCli()
     {
-        $content = array();
+        $content = [];
         $exports = $this->fetchExports();
-        foreach ($exports AS $export => $exportData) {
-            $content[$export] = sprintf('%-15s%-15s%-15s%-15s%s', BackendUtility::datetime($exportData['crdate']),
-                $exportData['l10ncfg_id'], $exportData['exportType'], $exportData['translation_lang'],
-                sprintf('%suploads/tx_l10nmgr/jobs/out/%s', PATH_site, $exportData['filename']));
+        foreach ($exports as $export => $exportData) {
+            $content[$export] = sprintf(
+                '%-15s%-15s%-15s%-15s%s',
+                BackendUtility::datetime($exportData['crdate']),
+                $exportData['l10ncfg_id'],
+                $exportData['exportType'],
+                $exportData['translation_lang'],
+                sprintf('%suploads/tx_l10nmgr/jobs/out/%s', PATH_site, $exportData['filename'])
+            );
         }
-        $out = sprintf('%-15s%-15s%-15s%-15s%s%s%s', $this->getLanguageService()->getLL('export.overview.date.label'),
+        $out = sprintf(
+            '%-15s%-15s%-15s%-15s%s%s%s',
+            $this->getLanguageService()->getLL('export.overview.date.label'),
             $this->getLanguageService()->getLL('export.overview.configuration.label'),
             $this->getLanguageService()->getLL('export.overview.type.label'),
             $this->getLanguageService()->getLL('export.overview.targetlanguage.label'),
-            $this->getLanguageService()->getLL('export.overview.filename.label'), LF,
-            implode(LF, $content));
+            $this->getLanguageService()->getLL('export.overview.filename.label'),
+            LF,
+            implode(LF, $content)
+        );
         return $out;
     }
 
@@ -388,7 +406,6 @@ abstract class AbstractExportView
      * Saves the exported files to the folder /uploads/tx_l10nmgr/jobs/out/
      *
      * @param string $fileContent The content to save to file
-     *
      * @return string $fileExportName The complete filename
      */
     public function saveExportFile($fileContent)
@@ -403,7 +420,6 @@ abstract class AbstractExportView
      *
      * @param string $old Old content
      * @param string $new New content
-     *
      * @return string Marked up string.
      */
     public function diffCMP($old, $new)
@@ -420,7 +436,6 @@ abstract class AbstractExportView
      * If yes, display them below the success message.
      *
      * @param string $status Flag which indicates if the export was successful.
-     *
      * @return string Rendered flash message or empty string if there are no messages.
      */
     public function renderInternalMessagesAsFlashMessage($status)
@@ -434,8 +449,12 @@ abstract class AbstractExportView
                     $messageBody .= $messageInformation['message'] . ' (' . $messageInformation['key'] . ')<br />';
                 }
                 /** @var FlashMessage $flashMessage */
-                $flashMessage = GeneralUtility::makeInstance(FlashMessage::class, $messageBody,
-                    $this->getLanguageService()->getLL('export.ftp.warnings'), FlashMessage::WARNING);
+                $flashMessage = GeneralUtility::makeInstance(
+                    FlashMessage::class,
+                    $messageBody,
+                    $this->getLanguageService()->getLL('export.ftp.warnings'),
+                    FlashMessage::WARNING
+                );
                 $ret .= GeneralUtility::makeInstance(FlashMessageRendererResolver::class)
                     ->resolve()
                     ->render([$flashMessage]);
@@ -460,14 +479,13 @@ abstract class AbstractExportView
      *
      * @param string $message Text of the message
      * @param string $key Key identifying the element where the problem happened
-     *
      * @return void
      */
     protected function setInternalMessage($message, $key)
     {
-        $this->internalMessages[] = array(
+        $this->internalMessages[] = [
             'message' => $message,
             'key' => $key
-        );
+        ];
     }
 }

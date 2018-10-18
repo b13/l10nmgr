@@ -127,8 +127,10 @@ class L10nHtmlListView extends AbstractExportView
                                     list(, $uidString, $fieldName) = explode(':', $key);
                                     list($uidValue) = explode('/', $uidString);
                                     $edit = true;
-                                    $noChangeFlag = !strcmp(trim($tData['diffDefaultValue']),
-                                        trim($tData['defaultValue']));
+                                    $noChangeFlag = !strcmp(
+                                        trim($tData['diffDefaultValue']),
+                                        trim($tData['defaultValue'])
+                                    );
                                     if ($uidValue === 'NEW') {
                                         $diff = '<em>' . $this->getLanguageService()->getLL('render_overview.new.message') . '</em>';
                                         $flags['new']++;
@@ -147,14 +149,19 @@ class L10nHtmlListView extends AbstractExportView
                                         $fieldCells = array();
                                         $fieldCells[] = '<b>' . htmlspecialchars($fieldName) . '</b>' . ($tData['msg'] ? '<br /><em>' . htmlspecialchars($tData['msg']) . '</em>' : '');
                                         $fieldCells[] = nl2br(htmlspecialchars($tData['defaultValue']));
-                                        $fieldCells[] = $edit && $this->modeWithInlineEdit ? ($tData['fieldType'] === 'text' ? '<textarea name="' . htmlspecialchars('translation[' . $table . '][' . $elementUid . '][' . $key . ']') . '" cols="60" rows="5">' . LF . htmlspecialchars($tData['translationValue']) . '</textarea>' : '<input name="' . htmlspecialchars('translation[' . $table . '][' . $elementUid . '][' . $key . ']') . '" value="' . htmlspecialchars($tData['translationValue']) . '" size="60" />') : nl2br(htmlspecialchars($tData['translationValue']));
+                                        $fieldCells[] = $edit && $this->modeWithInlineEdit
+                                            ? ($tData['fieldType'] === 'text'
+                                                ? '<textarea name="' . htmlspecialchars('translation[' . $table . '][' . $elementUid . '][' . $key . ']') . '" cols="60" rows="5">'
+                                                . LF . htmlspecialchars($tData['translationValue']) . '</textarea>'
+                                                : '<input name="' . htmlspecialchars('translation[' . $table . '][' . $elementUid . '][' . $key . ']')
+                                                . '" value="' . htmlspecialchars($tData['translationValue']) . '" size="60" />')
+                                            : nl2br(htmlspecialchars($tData['translationValue']));
                                         $fieldCells[] = $diff;
                                         if ($page['header']['prevLang'] && is_array($tData['previewLanguageValues'])) {
                                             reset($tData['previewLanguageValues']);
                                             $fieldCells[] = nl2br(htmlspecialchars(current($tData['previewLanguageValues'])));
                                         }
-                                        $FtableRows[] = '<tr><td>' . implode('</td><td>',
-                                                $fieldCells) . '</td></tr>';
+                                        $FtableRows[] = '<tr><td>' . implode('</td><td>', $fieldCells) . '</td></tr>';
                                     }
                                 }
                             }
@@ -168,11 +175,21 @@ class L10nHtmlListView extends AbstractExportView
                                     list(, $uidString) = explode(':', key($data['fields']));
                                 }
                                 if (substr($uidString, 0, 3) !== 'NEW') {
-                                    $editId = is_array($data['translationInfo']['translations'][$sysLang]) ? $data['translationInfo']['translations'][$sysLang]['uid'] : $data['translationInfo']['uid'];
-                                    $editLink = ' - <a href="#" onclick="' . htmlspecialchars(BackendUtility::editOnClick('&edit[' . $data['translationInfo']['translation_table'] . '][' . $editId . ']=edit',
-                                            $this->module->backPath)) . '"><em>[' . $this->getLanguageService()->getLL('render_overview.clickedit.message') . ']</em></a>';
+                                    $editId = is_array($data['translationInfo']['translations'][$sysLang])
+                                        ? $data['translationInfo']['translations'][$sysLang]['uid']
+                                        : $data['translationInfo']['uid'];
+                                    $editLink = ' - <a href="#" onclick="' . htmlspecialchars(
+                                        BackendUtility::editOnClick(
+                                            '&edit[' . $data['translationInfo']['translation_table'] . '][' . $editId . ']=edit',
+                                            $this->module->backPath
+                                        )
+                                    ) . '"><em>[' . $this->getLanguageService()->getLL('render_overview.clickedit.message') . ']</em></a>';
                                 } else {
-                                    $editLink = ' - <a href="' . htmlspecialchars(BackendUtility::getLinkToDataHandlerAction('&cmd[' . $table . '][' . $data['translationInfo']['uid'] . '][localize]=' . $sysLang)) . '"><em>[' . $this->getLanguageService()->getLL('render_overview.clicklocalize.message') . ']</em></a>';
+                                    $editLink = ' - <a href="' . htmlspecialchars(
+                                        BackendUtility::getLinkToDataHandlerAction(
+                                            '&cmd[' . $table . '][' . $data['translationInfo']['uid'] . '][localize]=' . $sysLang
+                                        )
+                                    ) . '"><em>[' . $this->getLanguageService()->getLL('render_overview.clicklocalize.message') . ']</em></a>';
                                 }
                             } else {
                                 $editLink = '';
