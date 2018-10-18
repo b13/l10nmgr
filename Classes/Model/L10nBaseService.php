@@ -25,6 +25,7 @@ use Psr\Log\LoggerAwareTrait;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Configuration\FlexForm\FlexFormTools;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Database\Query\Restriction\BackendWorkspaceRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\RelationHandler;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
@@ -37,7 +38,6 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * @authorKasper Skaarhoj <kasperYYYY@typo3.com>
  * @authorDaniel Pötzinger <development@aoemedia.de>
  * @packageTYPO3
- * @subpackage   tx_l10nmgr
  */
 class L10nBaseService implements LoggerAwareInterface
 {
@@ -85,7 +85,7 @@ class L10nBaseService implements LoggerAwareInterface
     }
 
     /**
-     * @return integer|NULL
+     * @return int|null
      */
     public static function getTargetLanguageID()
     {
@@ -103,7 +103,7 @@ class L10nBaseService implements LoggerAwareInterface
         // Provide a hook for specific manipulations before saving
         if (is_array($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['savePreProcess'])) {
             foreach ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['savePreProcess'] as $classReference) {
-                $processingObject = GeneralUtility::getUserObj($classReference);
+                $processingObject = GeneralUtility::makeInstance($classReference);
                 $processingObject->processBeforeSaving($l10ncfgObj, $translationObj, $this);
             }
         }
@@ -114,15 +114,17 @@ class L10nBaseService implements LoggerAwareInterface
         $previewLanguage = $translationObj->getPreviewLanguage();
         $accumObj = $l10ncfgObj->getL10nAccumulatedInformationsObjectForLanguage($sysLang);
         $accumObj->setForcedPreviewLanguage($previewLanguage);
-        $flexFormDiffArray = $this->_submitContentAndGetFlexFormDiff($accumObj->getInfoArray(),
-            $translationObj->getTranslationData());
+        $flexFormDiffArray = $this->_submitContentAndGetFlexFormDiff(
+            $accumObj->getInfoArray(),
+            $translationObj->getTranslationData()
+        );
         if ($flexFormDiffArray !== false) {
             $l10ncfgObj->updateFlexFormDiff($sysLang, $flexFormDiffArray);
         }
         // Provide a hook for specific manipulations after saving
         if (is_array($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['savePostProcess'])) {
             foreach ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['savePostProcess'] as $classReference) {
-                $processingObject = GeneralUtility::getUserObj($classReference);
+                $processingObject = GeneralUtility::makeInstance($classReference);
                 $processingObject->processAfterSaving($l10ncfgObj, $translationObj, $flexFormDiffArray, $this);
             }
         }
@@ -131,7 +133,7 @@ class L10nBaseService implements LoggerAwareInterface
     /**
      * Getter for $importAsDefaultLanguage
      *
-     * @return boolean
+     * @return bool
      */
     public function getImportAsDefaultLanguage()
     {
@@ -141,9 +143,7 @@ class L10nBaseService implements LoggerAwareInterface
     /**
      * Setter for $importAsDefaultLanguage
      *
-     * @param boolean $importAsDefaultLanguage
-     *
-     * @return void
+     * @param bool $importAsDefaultLanguage
      */
     public function setImportAsDefaultLanguage($importAsDefaultLanguage)
     {
@@ -201,32 +201,56 @@ class L10nBaseService implements LoggerAwareInterface
         $gridElementsInstalled = ExtensionManagementUtility::isLoaded('gridelements');
         if ($gridElementsInstalled) {
             // find all tt_content elements in the default language of this page that are NOT inside a grid element
-            $recordsInOriginalLanguage = BackendUtility::getRecordsByField('tt_content', 'pid', $pageUid,
-                'AND sys_language_uid=0 AND tx_gridelements_container=0', '', 'colPos, sorting');
+            $recordsInOriginalLanguage = $this->getRecordsByField(
+                'tt_content',
+                'pid',
+                $pageUid,
+                'AND sys_language_uid=0 AND tx_gridelements_container=0',
+                'colPos, sorting'
+            );
             foreach ($recordsInOriginalLanguage as $recordInOriginalLanguage) {
-                $translatedContentElements = BackendUtility::getRecordLocalization('tt_content',
-                    $recordInOriginalLanguage['uid'], $targetLanguageUid);
+                $translatedContentElements = $this->getRecordsByField(
+                    'tt_content',
+                    $recordInOriginalLanguage['uid'],
+                    $targetLanguageUid
+                );
                 if (empty($translatedContentElements)) {
                     $commands['tt_content'][$recordInOriginalLanguage['uid']]['localize'] = $targetLanguageUid;
                 }
             }
             // find all tt_content elements in the default language of this page that ARE inside a grid element
-            $recordsInOriginalLanguage = BackendUtility::getRecordsByField('tt_content', 'pid', $pageUid,
-                'AND sys_language_uid=0 AND tx_gridelements_container!=0', '', 'colPos, sorting');
+            $recordsInOriginalLanguage = $this->getRecordsByField(
+                'tt_content',
+                'pid',
+                $pageUid,
+                'AND sys_language_uid=0 AND tx_gridelements_container!=0',
+                'colPos, sorting'
+            );
             foreach ($recordsInOriginalLanguage as $recordInOriginalLanguage) {
-                $translatedContentElements = BackendUtility::getRecordLocalization('tt_content',
-                    $recordInOriginalLanguage['uid'], $targetLanguageUid);
+                $translatedContentElements = $this->getRecordsByField(
+                    'tt_content',
+                    $recordInOriginalLanguage['uid'],
+                    $targetLanguageUid
+                );
                 if (empty($translatedContentElements)) {
                     $commands['tt_content'][$recordInOriginalLanguage['uid']]['localize'] = $targetLanguageUid;
                 }
             }
         } else {
             // find all tt_content elements in the default language of this page
-            $recordsInOriginalLanguage = BackendUtility::getRecordsByField('tt_content', 'pid', $pageUid,
-                'AND sys_language_uid=0', '', 'colPos, sorting');
+            $recordsInOriginalLanguage = $this->getRecordsByField(
+                'tt_content',
+                'pid',
+                $pageUid,
+                'AND sys_language_uid=0',
+                'colPos, sorting'
+            );
             foreach ($recordsInOriginalLanguage as $recordInOriginalLanguage) {
-                $translatedContentElements = BackendUtility::getRecordLocalization('tt_content',
-                    $recordInOriginalLanguage['uid'], $targetLanguageUid);
+                $translatedContentElements = $this->getRecordsByField(
+                    'tt_content',
+                    $recordInOriginalLanguage['uid'],
+                    $targetLanguageUid
+                );
                 if (empty($translatedContentElements)) {
                     $commands['tt_content'][$recordInOriginalLanguage['uid']]['localize'] = $targetLanguageUid;
                 }
@@ -315,9 +339,8 @@ class L10nBaseService implements LoggerAwareInterface
     {
         if ($this->getImportAsDefaultLanguage()) {
             return $this->_submitContentAsDefaultLanguageAndGetFlexFormDiff($accum, $inputArray);
-        } else {
-            return $this->_submitContentAsTranslatedLanguageAndGetFlexFormDiff($accum, $inputArray);
         }
+        return $this->_submitContentAsTranslatedLanguageAndGetFlexFormDiff($accum, $inputArray);
     }
 
     /**
@@ -365,9 +388,11 @@ class L10nBaseService implements LoggerAwareInterface
                                             $TCEmain_data[$Ttable][$elementUid][$Tfield] = [];
                                         }
                                         //TCEMAINDATA is passed as reference here:
-                                        $flexToolObj->setArrayValueByPath($Tpath,
+                                        $flexToolObj->setArrayValueByPath(
+                                            $Tpath,
                                             $TCEmain_data[$Ttable][$elementUid][$Tfield],
-                                            $inputArray[$table][$elementUid][$key]);
+                                            $inputArray[$table][$elementUid][$key]
+                                        );
                                         $_flexFormDiffArray[$key] = [
                                             'translated' => $inputArray[$table][$elementUid][$key],
                                             'default' => $tData['defaultValue'],
@@ -376,10 +401,9 @@ class L10nBaseService implements LoggerAwareInterface
                                         $TCEmain_data[$Ttable][$elementUid][$Tfield] = $inputArray[$table][$elementUid][$key];
                                     }
                                     unset($inputArray[$table][$elementUid][$key]); // Unsetting so in the end we can see if $inputArray was fully processed.
-                                } else {
-                                    //debug($tData,'fields not set for: '.$elementUid.'-'.$key);
-                                    //debug($inputArray[$table],'inputarray');
                                 }
+                                //debug($tData,'fields not set for: '.$elementUid.'-'.$key);
+                                //debug($inputArray[$table],'inputarray');
                             }
                             if (is_array($inputArray[$table][$elementUid]) && !count($inputArray[$table][$elementUid])) {
                                 unset($inputArray[$table][$elementUid]); // Unsetting so in the end we can see if $inputArray was fully processed.
@@ -411,13 +435,17 @@ class L10nBaseService implements LoggerAwareInterface
             $tce->dontProcessTransformations = true;
             $tce->isImporting = true;
             foreach (array_chunk($TCEmain_data, 100, true) as $dataPart) {
-                $tce->start($dataPart,
-                    []); // check has been done previously that there is a backend user which is Admin and also in live workspace
+                $tce->start(
+                    $dataPart,
+                    []
+                ); // check has been done previously that there is a backend user which is Admin and also in live workspace
                 $tce->process_datamap();
             }
             if (count($tce->errorLog)) {
-                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain update errors: ' . implode(', ',
-                        $tce->errorLog));
+                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain update errors: ' . implode(
+                        ', ',
+                        $tce->errorLog
+                    ));
             }
             if (count($tce->autoVersionIdMap) && count($_flexFormDiffArray)) {
                 foreach ($_flexFormDiffArray as $key => $value) {
@@ -433,9 +461,8 @@ class L10nBaseService implements LoggerAwareInterface
                 debug($inputArray, 'These fields were ignored since they were not in the configuration 1:');
             }
             return $_flexFormDiffArray;
-        } else {
-            return false;
         }
+        return false;
     }
 
     /**
@@ -475,8 +502,10 @@ class L10nBaseService implements LoggerAwareInterface
                         }
                         if (is_array($data['fields'])) {
                             foreach ($data['fields'] as $key => $tData) {
-                                if (is_array($tData) && is_array($inputArray[$table][$elementUid]) && array_key_exists($key,
-                                        $inputArray[$table][$elementUid])) {
+                                if (is_array($tData) && is_array($inputArray[$table][$elementUid]) && array_key_exists(
+                                        $key,
+                                        $inputArray[$table][$elementUid]
+                                    )) {
                                     list($Ttable, $TuidString, $Tfield, $Tpath) = explode(':', $key);
                                     list($Tuid, $Tlang, $TdefRecord) = explode('/', $TuidString);
                                     if (!$this->createTranslationAlsoIfEmpty && $inputArray[$table][$elementUid][$key] == '' && $Tuid == 'NEW' && $Tfield !== trim($GLOBALS['TCA'][$Ttable]['ctrl']['label'])) {
@@ -495,13 +524,21 @@ class L10nBaseService implements LoggerAwareInterface
                                             } else {
                                                 if ($element['tx_gridelements_container'] > 0) {
                                                     $this->depthCounter = 0;
-                                                    $this->recursivelyCheckForRelationParents($element, $Tlang,
-                                                        'tx_gridelements_container', 'tx_gridelements_children');
+                                                    $this->recursivelyCheckForRelationParents(
+                                                        $element,
+                                                        $Tlang,
+                                                        'tx_gridelements_container',
+                                                        'tx_gridelements_children'
+                                                    );
                                                 }
                                                 if ($element['tx_flux_parent'] > 0) {
                                                     $this->depthCounter = 0;
-                                                    $this->recursivelyCheckForRelationParents($element, $Tlang,
-                                                        'tx_flux_parent', 'tx_flux_children');
+                                                    $this->recursivelyCheckForRelationParents(
+                                                        $element,
+                                                        $Tlang,
+                                                        'tx_flux_parent',
+                                                        'tx_flux_children'
+                                                    );
                                                 }
                                             }
                                         } elseif ($table === 'sys_file_reference') {
@@ -518,12 +555,20 @@ class L10nBaseService implements LoggerAwareInterface
                                                     $parent = $queryBuilder->select('*')
                                                         ->from($element['tablenames'])
                                                         ->where(
-                                                            $queryBuilder->expr()->eq($GLOBALS['TCA'][$element['tablenames']]['ctrl']['transOrigPointerField'],
-                                                                $queryBuilder->createNamedParameter((int)$element['uid_foreign'],
-                                                                    \PDO::PARAM_INT)),
-                                                            $queryBuilder->expr()->eq('sys_language_uid',
-                                                                $queryBuilder->createNamedParameter((int)$Tlang,
-                                                                    \PDO::PARAM_INT))
+                                                            $queryBuilder->expr()->eq(
+                                                                $GLOBALS['TCA'][$element['tablenames']]['ctrl']['transOrigPointerField'],
+                                                                $queryBuilder->createNamedParameter(
+                                                                    (int)$element['uid_foreign'],
+                                                                    \PDO::PARAM_INT
+                                                                )
+                                                            ),
+                                                            $queryBuilder->expr()->eq(
+                                                                'sys_language_uid',
+                                                                $queryBuilder->createNamedParameter(
+                                                                    (int)$Tlang,
+                                                                    \PDO::PARAM_INT
+                                                                )
+                                                            )
                                                         )
                                                         ->execute()
                                                         ->fetch();
@@ -548,9 +593,14 @@ class L10nBaseService implements LoggerAwareInterface
                                                 $configuration = $GLOBALS['TCA'][$table]['columns'][$key]['config'];
                                                 if ($configuration['foreign_table']) {
                                                     $relationHandler = GeneralUtility::makeInstance(RelationHandler::class);
-                                                    $relationHandler->start($element[$key],
+                                                    $relationHandler->start(
+                                                        $element[$key],
                                                         $configuration['foreign_table'],
-                                                        $configuration['MM'], $elementUid, $table, $configuration);
+                                                        $configuration['MM'],
+                                                        $elementUid,
+                                                        $table,
+                                                        $configuration
+                                                    );
                                                     $relationHandler->processDeletePlaceholder();
                                                     $referenceUids = $relationHandler->tableArray[$configuration['foreign_table']];
                                                     if (!empty($referenceUids)) {
@@ -571,8 +621,11 @@ class L10nBaseService implements LoggerAwareInterface
                                                     'data' => $data,
                                                     'TCEmain_cmd' => $this->TCEmain_cmd,
                                                 ];
-                                                $this->TCEmain_cmd = GeneralUtility::callUserFunction($hookObj,
-                                                    $parameters, $this);
+                                                $this->TCEmain_cmd = GeneralUtility::callUserFunction(
+                                                    $hookObj,
+                                                    $parameters,
+                                                    $this
+                                                );
                                             }
                                         }
                                     }
@@ -582,9 +635,11 @@ class L10nBaseService implements LoggerAwareInterface
                                             $TCEmain_data[$Ttable][$TuidString][$Tfield] = [];
                                         }
                                         //TCEMAINDATA is passed as reference here:
-                                        $flexToolObj->setArrayValueByPath($Tpath,
+                                        $flexToolObj->setArrayValueByPath(
+                                            $Tpath,
                                             $TCEmain_data[$Ttable][$TuidString][$Tfield],
-                                            $inputArray[$table][$elementUid][$key]);
+                                            $inputArray[$table][$elementUid][$key]
+                                        );
                                         $_flexFormDiffArray[$key] = [
                                             'translated' => $inputArray[$table][$elementUid][$key],
                                             'default' => $tData['defaultValue'],
@@ -593,10 +648,9 @@ class L10nBaseService implements LoggerAwareInterface
                                         $TCEmain_data[$Ttable][$TuidString][$Tfield] = $inputArray[$table][$elementUid][$key];
                                     }
                                     unset($inputArray[$table][$elementUid][$key]); // Unsetting so in the end we can see if $inputArray was fully processed.
-                                } else {
-                                    //debug($tData,'fields not set for: '.$elementUid.'-'.$key);
-                                    //debug($inputArray[$table],'inputarray');
                                 }
+                                //debug($tData,'fields not set for: '.$elementUid.'-'.$key);
+                                //debug($inputArray[$table],'inputarray');
                             }
                             if (is_array($inputArray[$table][$elementUid]) && !count($inputArray[$table][$elementUid])) {
                                 unset($inputArray[$table][$elementUid]); // Unsetting so in the end we can see if $inputArray was fully processed.
@@ -635,14 +689,15 @@ class L10nBaseService implements LoggerAwareInterface
                 }
             }
             // Before remapping
-            $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain_data before remapping: ' . implode(", ",
-                    $TCEmain_data));
+            $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain_data before remapping: ' . implode(
+                    ', ',
+                    $TCEmain_data
+                ));
             // Remapping those elements which are new:
             $this->lastTCEMAINCommandsCount = 0;
             foreach ($TCEmain_data as $table => $items) {
                 foreach ($TCEmain_data[$table] as $TuidString => $fields) {
                     if ($table === 'sys_file_reference' && $fields['tablenames'] === 'pages') {
-
                         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('pages_language_overlay');
                         $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
 
@@ -671,12 +726,13 @@ class L10nBaseService implements LoggerAwareInterface
                     $this->lastTCEMAINCommandsCount++;
                     if ($Tuid === 'NEW') {
                         if ($tce->copyMappingArray_merged[$table][$TdefRecord]) {
-                            $TCEmain_data[$table][BackendUtility::wsMapId($table,
-                                $tce->copyMappingArray_merged[$table][$TdefRecord])] = $fields;
+                            $TCEmain_data[$table][BackendUtility::wsMapId(
+                                $table,
+                                $tce->copyMappingArray_merged[$table][$TdefRecord]
+                            )] = $fields;
                         } else {
                             if ($this->childMappingArray[$table][$TdefRecord]) {
                                 if ($this->childMappingArray[$table][$TdefRecord] === true) {
-
                                     $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
                                     $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
 
@@ -706,8 +762,10 @@ class L10nBaseService implements LoggerAwareInterface
                                         $GLOBALS['TCA'][$table]['ctrl']['enablecolumns']['disabled']) {
                                         $fields[$GLOBALS['TCA'][$table]['ctrl']['enablecolumns']['disabled']] = 0;
                                     }
-                                    $TCEmain_data[$table][BackendUtility::wsMapId($table,
-                                        $this->childMappingArray[$table][$TdefRecord])] = $fields;
+                                    $TCEmain_data[$table][BackendUtility::wsMapId(
+                                        $table,
+                                        $this->childMappingArray[$table][$TdefRecord]
+                                    )] = $fields;
                                 }
                             } else {
                                 $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': Record "' . $table . ':' . $TdefRecord . '" was NOT localized as it should have been!');
@@ -718,8 +776,10 @@ class L10nBaseService implements LoggerAwareInterface
                 }
             }
             // After remapping
-            $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain_data after remapping: ' . implode(", ",
-                    $TCEmain_data));
+            $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain_data after remapping: ' . implode(
+                    ', ',
+                    $TCEmain_data
+                ));
             // Now, submitting translation data:
             /** @var DataHandler $tce */
             $tce = GeneralUtility::makeInstance(DataHandler::class);
@@ -729,18 +789,24 @@ class L10nBaseService implements LoggerAwareInterface
             $tce->dontProcessTransformations = true;
             $tce->isImporting = true;
             foreach (array_chunk($TCEmain_data, 100, true) as $dataPart) {
-                $tce->start($dataPart,
-                    []); // check has been done previously that there is a backend user which is Admin and also in live workspace
+                $tce->start(
+                    $dataPart,
+                    []
+                ); // check has been done previously that there is a backend user which is Admin and also in live workspace
                 $tce->process_datamap();
             }
             self::$targetLanguageID = null;
             if (count($tce->errorLog)) {
-                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain update errors: ' . implode(', ',
-                        $tce->errorLog));
+                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': TCEmain update errors: ' . implode(
+                        ', ',
+                        $tce->errorLog
+                    ));
             }
             if (count($tce->autoVersionIdMap) && count($_flexFormDiffArray)) {
-                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': flexFormDiffArry: ' . implode(', ',
-                        $this->flexFormDiffArray));
+                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': flexFormDiffArry: ' . implode(
+                        ', ',
+                        $this->flexFormDiffArray
+                    ));
                 foreach ($_flexFormDiffArray as $key => $value) {
                     list($Ttable, $Tuid, $Trest) = explode(':', $key, 3);
                     if ($tce->autoVersionIdMap[$Ttable][$Tuid]) {
@@ -749,17 +815,18 @@ class L10nBaseService implements LoggerAwareInterface
                     }
                 }
                 $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': autoVersionIdMap: ' . $tce->autoVersionIdMap);
-                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': _flexFormDiffArray: ' . implode(', ',
-                        $_flexFormDiffArray));
+                $this->logger->debug(__FILE__ . ': ' . __LINE__ . ': _flexFormDiffArray: ' . implode(
+                        ', ',
+                        $_flexFormDiffArray
+                    ));
             }
             // Should be empty now - or there were more information in the incoming array than there should be!
             if (count($inputArray)) {
                 debug($inputArray, 'These fields were ignored since they were not in the configuration 2:');
             }
             return $_flexFormDiffArray;
-        } else {
-            return false;
         }
+        return false;
     }
 
     /**
@@ -775,7 +842,6 @@ class L10nBaseService implements LoggerAwareInterface
             $this->checkedParentRecords[$parentField][$element['uid']] = true;
             $translatedParent = [];
             if ($element[$parentField] > 0) {
-
                 $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
                 $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
 
@@ -799,7 +865,6 @@ class L10nBaseService implements LoggerAwareInterface
                 $this->TCEmain_cmd['tt_content'][$translatedParent['uid']]['inlineLocalizeSynchronize'] = $childrenField . ',localize';
             } else {
                 if ($element[$parentField] > 0) {
-
                     $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('tt_content');
                     $queryBuilder->getRestrictions()->removeAll()->add(GeneralUtility::makeInstance(DeletedRestriction::class));
 
@@ -836,5 +901,65 @@ class L10nBaseService implements LoggerAwareInterface
             ->fetch();
 
         return $row ?: [];
+    }
+
+    /**
+     * @param string $theTable
+     * @param string $theField
+     * @param string $theValue
+     * @param string $whereClause
+     * @param string $orderBy
+     * @return array
+     */
+    protected function getRecordsByField(
+        string $theTable,
+        string $theField,
+        string $theValue,
+        string $whereClause = '',
+        string $orderBy = ''
+    ): array {
+        if (is_array($GLOBALS['TCA'][$theTable])) {
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($theTable);
+
+            $queryBuilder->getRestrictions()
+                ->removeAll()
+                ->add(GeneralUtility::makeInstance(BackendWorkspaceRestriction::class))
+                ->add(GeneralUtility::makeInstance(DeletedRestriction::class));
+
+            $queryBuilder
+                ->select('*')
+                ->from($theTable)
+                ->where($queryBuilder->expr()->eq($theField, $queryBuilder->createNamedParameter($theValue)));
+
+            // additional where
+            if ($whereClause) {
+                $queryBuilder->andWhere(preg_replace('/^(?:(AND|OR)[[:space:]]*)+/i', '', trim($whereClause)) ?: '');
+            }
+
+            // order by
+            if ($orderBy !== '') {
+                $orderExpressions = GeneralUtility::trimExplode(',', $orderBy, true);
+
+                $orderByNames = array_map(
+                    function ($expression) {
+                        $fieldNameOrderArray = GeneralUtility::trimExplode(' ', $expression, true);
+                        $fieldName = $fieldNameOrderArray[0] ?? null;
+                        $order = $fieldNameOrderArray[1] ?? null;
+
+                        return [$fieldName, $order];
+                    },
+                    $orderExpressions
+                );
+
+                foreach ($orderByNames as $orderPair) {
+                    list($fieldName, $order) = $orderPair;
+                    $queryBuilder->addOrderBy($fieldName, $order);
+                }
+            }
+
+            $rows = $queryBuilder->execute()->fetchAll();
+            return $rows;
+        }
+        return [];
     }
 }
