@@ -102,12 +102,14 @@ class LocalizationmanagerFileGarbageCollection extends AbstractTask
         $fileObject = null;
         foreach ($directoryContent as $fileObject) {
             // Remove files that are older than given timestamp and don't match the exclude pattern
-            if ($fileObject->isFile() && !preg_match('/' . $this->excludePattern . '/i',
-                    $fileObject->getFilename()) && $fileObject->getCTime() < $timestamp
+            if ($fileObject->isFile()
+                && !preg_match('/' . $this->excludePattern . '/i', $fileObject->getFilename()) && $fileObject->getCTime() < $timestamp
             ) {
                 if (!(@unlink($fileObject->getRealPath()))) {
-                    throw new RuntimeException('Could not remove file "' . $fileObject->getRealPath() . '"',
-                        1323272115);
+                    throw new RuntimeException(
+                        'Could not remove file "' . $fileObject->getRealPath() . '"',
+                        1323272115
+                    );
                 }
             }
         }

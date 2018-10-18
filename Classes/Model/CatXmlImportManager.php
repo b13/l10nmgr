@@ -19,7 +19,7 @@ namespace Localizationteam\L10nmgr\Model;
  * This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
-use TYPO3\CMS\Core\Database\DatabaseConnection;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\DataHandling\DataHandler;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Lang\LanguageService;
@@ -36,7 +36,7 @@ class CatXmlImportManager
     /**
      * @var array $headerData headerData of the XML
      */
-    public $headerData = array();
+    public $headerData = [];
     /**
      * @var string $file filepath with XML
      */
@@ -56,7 +56,7 @@ class CatXmlImportManager
     /**
      * @var array $_errorMsg accumulated errormessages
      */
-    protected $_errorMsg = array();
+    protected $_errorMsg = [];
     /**
      * @var LanguageService
      */
@@ -79,8 +79,14 @@ class CatXmlImportManager
     public function parseAndCheckXMLFile()
     {
         $fileContent = GeneralUtility::getUrl($this->file);
-        $this->xmlNodes = GeneralUtility::xml2tree(str_replace('&nbsp;', '&#160;', $fileContent),
-            3); // For some reason PHP chokes on incoming &nbsp; in XML!
+        $this->xmlNodes = GeneralUtility::xml2tree(
+            str_replace(
+                '&nbsp;',
+                '&#160;',
+                $fileContent
+            ),
+            3
+        ); // For some reason PHP chokes on incoming &nbsp; in XML!
         if (!is_array($this->xmlNodes)) {
             $this->_errorMsg[] = $this->getLanguageService()->getLL('import.manager.error.parsing.xml2tree.message') . $this->xmlNodes . ' Content: ' . $fileContent;
             return false;
@@ -135,7 +141,7 @@ class CatXmlImportManager
             if (is_array($v) && is_array($v[0]) && is_array($v[0]['values'])) {
                 $this->headerData[$k] = $v[0]['values'][0];
             }
-       }
+        }
     }
 
     /**
@@ -143,21 +149,28 @@ class CatXmlImportManager
      */
     protected function _isIncorrectXMLFile()
     {
-        $error = array();
+        $error = [];
         if (!isset($this->headerData['t3_formatVersion']) || $this->headerData['t3_formatVersion'] != L10NMGR_FILEVERSION) {
-            $error[] = sprintf($this->getLanguageService()->getLL('import.manager.error.version.message'),
-                $this->headerData['t3_formatVersion'], L10NMGR_FILEVERSION);
+            $error[] = sprintf(
+                $this->getLanguageService()->getLL('import.manager.error.version.message'),
+                $this->headerData['t3_formatVersion'],
+                L10NMGR_FILEVERSION
+            );
         }
         if (!isset($this->headerData['t3_workspaceId']) || $this->headerData['t3_workspaceId'] != $this->getBackendUser()->workspace) {
             $this->getBackendUser()->workspace = $this->headerData['t3_workspaceId'];
-            $error[] = sprintf($this->getLanguageService()->getLL('import.manager.error.workspace.message'),
+            $error[] = sprintf(
+                $this->getLanguageService()->getLL('import.manager.error.workspace.message'),
                 $this->getBackendUser()->workspace,
-                $this->headerData['t3_workspaceId']);
+                $this->headerData['t3_workspaceId']
+            );
         }
         if (!isset($this->headerData['t3_sysLang']) || $this->headerData['t3_sysLang'] != $this->sysLang) {
-            $error[] = sprintf($this->getLanguageService()->getLL('import.manager.error.language.message'),
+            $error[] = sprintf(
+                $this->getLanguageService()->getLL('import.manager.error.language.message'),
                 $this->sysLang,
-                $this->headerData['t3_sysLang']);
+                $this->headerData['t3_sysLang']
+            );
         }
         if (count($error) > 0) {
             $this->_errorMsg = array_merge($this->_errorMsg, $error);
@@ -172,8 +185,10 @@ class CatXmlImportManager
     public function parseAndCheckXMLString()
     {
         $catXmlString = $this->xmlString;
-        $this->xmlNodes = GeneralUtility::xml2tree(str_replace('&nbsp;', '&#160;', $catXmlString),
-            3); // For some reason PHP chokes on incoming &nbsp; in XML!
+        $this->xmlNodes = GeneralUtility::xml2tree(
+            str_replace('&nbsp;', '&#160;', $catXmlString),
+            3
+        ); // For some reason PHP chokes on incoming &nbsp; in XML!
         if (!is_array($this->xmlNodes)) {
             $this->_errorMsg[] = $this->getLanguageService()->getLL('import.manager.error.parsing.xml2tree.message') . $this->xmlNodes;
             return false;
@@ -195,21 +210,28 @@ class CatXmlImportManager
      */
     protected function _isIncorrectXMLString()
     {
-        $error = array();
+        $error = [];
         if (!isset($this->headerData['t3_formatVersion']) || $this->headerData['t3_formatVersion'] != L10NMGR_FILEVERSION) {
-            $error[] = sprintf($this->getLanguageService()->getLL('import.manager.error.version.message'),
-                $this->headerData['t3_formatVersion'], L10NMGR_FILEVERSION);
+            $error[] = sprintf(
+                $this->getLanguageService()->getLL('import.manager.error.version.message'),
+                $this->headerData['t3_formatVersion'],
+                L10NMGR_FILEVERSION
+            );
         }
         if (!isset($this->headerData['t3_workspaceId']) || $this->headerData['t3_workspaceId'] != $this->getBackendUser()->workspace) {
-            $error[] = sprintf($this->getLanguageService()->getLL('import.manager.error.workspace.message'),
+            $error[] = sprintf(
+                $this->getLanguageService()->getLL('import.manager.error.workspace.message'),
                 $this->getBackendUser()->workspace,
-                $this->headerData['t3_workspaceId']);
+                $this->headerData['t3_workspaceId']
+            );
         }
         if (!isset($this->headerData['t3_sysLang'])) {
             //if (!isset($this->headerData['t3_sysLang']) || $this->headerData['t3_sysLang'] != $this->sysLang) {
-            $error[] = sprintf($this->getLanguageService()->getLL('import.manager.error.language.message'),
+            $error[] = sprintf(
+                $this->getLanguageService()->getLL('import.manager.error.language.message'),
                 $this->sysLang,
-                $this->headerData['t3_sysLang']);
+                $this->headerData['t3_sysLang']
+            );
         }
         if (count($error) > 0) {
             $this->_errorMsg = array_merge($this->_errorMsg, $error);
@@ -243,7 +265,7 @@ class CatXmlImportManager
      */
     public function getPidsFromCATXMLNodes(&$xmlNodes)
     {
-        $pids = array();
+        $pids = [];
         if (is_array($xmlNodes['TYPO3L10N'][0]['ch']['pageGrp'])) {
             foreach ($xmlNodes['TYPO3L10N'][0]['ch']['pageGrp'] as $pageGrp) {
                 $pids[] = $pageGrp['attrs']['id'];
@@ -262,7 +284,7 @@ class CatXmlImportManager
     public function getDelL10NDataFromCATXMLNodes(&$xmlNodes)
     {
         //get L10Ns to be deleted before import
-        $delL10NUids = array();
+        $delL10NUids = [];
         if (is_array($xmlNodes['TYPO3L10N'][0]['ch']['pageGrp'])) {
             foreach ($xmlNodes['TYPO3L10N'][0]['ch']['pageGrp'] as $pageGrp) {
                 if (is_array($pageGrp['ch']['data'])) {
@@ -288,43 +310,37 @@ class CatXmlImportManager
     {
         //delete previous L10Ns
         $cmdCount = 0;
-        /** @var Datahandler $dataHandler */
+        /** @var DataHandler $dataHandler */
         $dataHandler = GeneralUtility::makeInstance(DataHandler::class);
-        $dataHandler->start(array(), array());
+        $dataHandler->start([], []);
         foreach ($delL10NData as $element) {
             list($table, $elementUid) = explode(':', $element);
-            if ($table == 'pages') {
-                $table = 'pages_language_overlay';
-                $where = 'pid = ' . (int)$elementUid . ' AND sys_language_uid = ' . (int)$this->headerData['t3_sysLang'] . ' AND t3ver_wsid = ' . (int)$this->headerData['t3_workspaceId'];
-            } else {
-                $languageField = $GLOBALS['TCA'][$table]['ctrl']['languageField'];
-                $l18nPointerField = $GLOBALS['TCA'][$table]['ctrl']['transOrigPointerField'];
-                $where = $l18nPointerField . " = $elementUid AND " . $languageField . " = " . $this->headerData['t3_sysLang'] . " AND t3ver_wsid = " . $this->headerData['t3_workspaceId'];
-            }
-            $delDataQuery = $this->getDatabaseConnection()->exec_SELECTgetRows('uid', $table, $where, '', '', '',
-                'uid');
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
+            $delDataQuery = $queryBuilder->select('uid')
+                ->from($table)
+                ->where(
+                    $queryBuilder->expr()->eq(
+                        $GLOBALS['TCA'][$table]['ctrl']['transOrigPointerField'],
+                        $queryBuilder->createNamedParameter($elementUid, \PDO::PARAM_INT)
+                    ),
+                    $queryBuilder->expr()->eq(
+                        $GLOBALS['TCA'][$table]['ctrl']['languageField'],
+                        $queryBuilder->createNamedParameter($this->headerData['t3_sysLang'], \PDO::PARAM_INT)
+                    ),
+                    $queryBuilder->expr()->eq(
+                        't3ver_wsid',
+                        $queryBuilder->createNamedParameter($this->headerData['t3_workspaceId'], \PDO::PARAM_INT)
+                    )
+                )
+                ->execute()
+                ->fetchAll();
             if (!empty($delDataQuery)) {
-                foreach ($delDataQuery as $uid => $item) {
-                    $dataHandler->deleteAction($table, $uid);
+                foreach ($delDataQuery as $row) {
+                    $dataHandler->deleteAction($table, $row['uid']);
                 }
             }
             $cmdCount++;
         }
         return $cmdCount;
-    }
-
-    /**
-     * Get DatabaseConnection instance - $GLOBALS['TYPO3_DB']
-     *
-     * This method should be used instead of direct access to
-     * $GLOBALS['TYPO3_DB'] for easy IDE auto completion.
-     *
-     * @return DatabaseConnection
-     * @deprecated since TYPO3 v8, will be removed in TYPO3 v9
-     */
-    protected function getDatabaseConnection()
-    {
-        GeneralUtility::logDeprecatedFunction();
-        return $GLOBALS['TYPO3_DB'];
     }
 }

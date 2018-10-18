@@ -24,12 +24,17 @@ namespace Localizationteam\L10nmgr\Model\Tools;
  *
  * @author Daniel Pötzinger <development@aoemedia.de>
  */
+
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerAwareTrait;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Html\RteHtmlParser;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-class XmlTools
+class XmlTools implements LoggerAwareInterface
 {
+    use LoggerAwareTrait;
+
     /**
      * @var RteHtmlParser
      */
@@ -52,7 +57,7 @@ class XmlTools
     {
         //function RTE2XML($content,$withStripBadUTF8=$this->getBackendUser()->getModuleData('l10nmgr/cm1/checkUTF8', '')) {
         //if (!$withStripBadUTF8) {
-        //	$withStripBadUTF8 = $this->getBackendUser()->getModuleData('l10nmgr/cm1/checkUTF8', '');
+        // $withStripBadUTF8 = $this->getBackendUser()->getModuleData('l10nmgr/cm1/checkUTF8', '');
         //}
         //echo '###'.$withStripBadUTF8;
         // First call special transformations (registered using hooks)
@@ -125,26 +130,22 @@ class XmlTools
         $xmlstring = str_replace('<hr/>', '<hr>', $xmlstring);
         $xmlstring = str_replace('<hr />', '<hr>', $xmlstring);
         $xmlstring = str_replace("\xc2\xa0", '&nbsp;', $xmlstring);
-        //Writes debug information for CLI import to syslog if $TYPO3_CONF_VARS['SYS']['enable_DLOG'] is set.
-        if (TYPO3_DLOG) {
-            GeneralUtility::sysLog(__FILE__ . ': Before RTE transformation:' . LF . $xmlstring . LF, 'l10nmgr');
-        }
+        //Writes debug information for CLI import.
+        $this->logger->debug(__FILE__ . ': Before RTE transformation:' . LF . $xmlstring . LF);
         $pageTsConf = BackendUtility::getPagesTSconfig(0);
         $rteConf = $pageTsConf['RTE.']['default.'];
         $content = $this->parseHTML->RTE_transform($xmlstring, array(), 'db', $rteConf);
         // Last call special transformations (registered using hooks)
         if (is_array($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['transformation'])) {
             foreach ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['transformation'] as $classReference) {
-                $processingObject = GeneralUtility::getUserObj($classReference);
+                $processingObject = GeneralUtility::makeInstance($classReference);
                 $content = $processingObject->transform_db($content, $this->parseHTML);
             }
         }
         //substitute URL in <link> for CLI import
         $content = preg_replace('/<link http(s)?:\/\/[\w\.\/]*\?id=/', '<link ', $content);
-        //Writes debug information for CLI import to syslog if $TYPO3_CONF_VARS['SYS']['enable_DLOG'] is set.
-        if (TYPO3_DLOG) {
-            GeneralUtility::sysLog(__FILE__ . ': After RTE transformation:' . LF . $content . LF, 'l10nmgr');
-        }
+        //Writes debug information for CLI import.
+        $this->logger->debug(__FILE__ . ': After RTE transformation:' . LF . $content . LF);
         return $content;
     }
 }

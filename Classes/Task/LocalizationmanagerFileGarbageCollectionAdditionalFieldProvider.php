@@ -82,7 +82,7 @@ class LocalizationmanagerFileGarbageCollectionAdditionalFieldProvider implements
         $fieldHtml = '<input type="text" name="' . $fieldName . '" id="' . $fieldId . '" value="' . htmlspecialchars($fieldValue) . '" size="10" />';
         $additionalFields[$fieldId] = array(
             'code' => $fieldHtml,
-            'label' => 'LLL:EXT:l10nmgr/tasks/locallang.xml:fileGarbageCollection.age',
+            'label' => 'LLL:EXT:l10nmgr/Resources/Private/Language/Task/locallang.xlf:fileGarbageCollection.age',
             'cshKey' => '_tasks_txl10nmgr',
             'cshLabel' => $fieldId,
         );
@@ -93,7 +93,7 @@ class LocalizationmanagerFileGarbageCollectionAdditionalFieldProvider implements
         $fieldHtml = '<input type="text" name="' . $fieldName . '" id="' . $fieldId . '" value="' . htmlspecialchars($fieldValue) . '" size="30" />';
         $additionalFields[$fieldId] = array(
             'code' => $fieldHtml,
-            'label' => 'LLL:EXT:l10nmgr/tasks/locallang.xml:fileGarbageCollection.excludePattern',
+            'label' => 'LLL:EXT:l10nmgr/Resources/Private/Language/Task/locallang.xlf:fileGarbageCollection.excludePattern',
             'cshKey' => '_tasks_txl10nmgr',
             'cshLabel' => $fieldId,
         );
@@ -115,8 +115,12 @@ class LocalizationmanagerFileGarbageCollectionAdditionalFieldProvider implements
         // If not, fail validation and issue error message
         if (!is_numeric($submittedData['l10nmgr_fileGarbageCollection_age']) || (int)$submittedData['l10nmgr_fileGarbageCollection_age'] <= 0) {
             $result = false;
-            $parentObject->addMessage($this->getLanguageService()->sL('LLL:EXT:l10nmgr/tasks/locallang.xml:fileGarbageCollection.invalidAge'),
-                FlashMessage::ERROR);
+            $parentObject->addMessage(
+                $this->getLanguageService()->sL(
+                    'LLL:EXT:l10nmgr/Resources/Private/Language/Task/locallang.xlf:fileGarbageCollection.invalidAge'
+                ),
+                FlashMessage::ERROR
+            );
         }
         return $result;
     }

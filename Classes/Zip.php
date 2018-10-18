@@ -1,4 +1,5 @@
 <?php
+
 namespace Localizationteam\L10nmgr;
 
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -24,13 +25,13 @@ class Zip
      *
      * @var array $datasec
      */
-    protected $datasec = array();
+    protected $datasec = [];
     /**
      * Central directory
      *
      * @var array $ctrl_dir
      */
-    protected $ctrl_dir = array();
+    protected $ctrl_dir = [];
     /**
      * End of central directory record
      *
@@ -60,7 +61,6 @@ class Zip
      * @param string $data file contents
      * @param string $name name of the file in the archive (may contains the path)
      * @param integer $time the current timestamp
-     *
      * @access public
      */
     public function addFile($data, $name, $time = 0)
@@ -123,7 +123,6 @@ class Zip
      * in high two bytes, time in low two bytes allowing magnitude comparison).
      *
      * @param integer $unixtime the current Unix timestamp
-     *
      * @return integer the current date in a four byte DOS format
      * @access private
      */
@@ -164,7 +163,6 @@ class Zip
      * The file is libunzipped in PATH_site.'typo3temp/' + a randomly named folder.
      *
      * @param $file
-     *
      * @return mixed
      * @access private
      */
@@ -183,7 +181,7 @@ class Zip
                 $cmd = str_replace('###ARCHIVENAME###', $file, $cmd);
                 $cmd = str_replace('###DIRECTORY###', $tempDir, $cmd);
                 exec($cmd);
-                $out['fileArr'] = $this->getAllFilesAndFoldersInPath(array(), $tempDir);
+                $out['fileArr'] = $this->getAllFilesAndFoldersInPath([], $tempDir);
                 $out['tempDir'] = $tempDir;
                 return $out;
             } else {
@@ -196,7 +194,6 @@ class Zip
 
     /**
      * Returns an array with all files and folders in $extPath
-     *
      * @paramarray $fileArr
      * @paramstring $extPath
      *
@@ -225,7 +222,6 @@ class Zip
      * $tempDir must be a subfolder to typo3temp/
      *
      * @param string $tempDir
-     *
      * @return void
      * @access private
      */
