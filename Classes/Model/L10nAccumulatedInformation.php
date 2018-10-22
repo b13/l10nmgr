@@ -140,7 +140,6 @@ class L10nAccumulatedInformation
      **/
     protected function _calculateInternalAccumulatedInformationsArray()
     {
-        global $TCA;
         $tree = $this->tree;
         $l10ncfg = $this->l10ncfg;
         $accum = [];
@@ -181,7 +180,7 @@ class L10nAccumulatedInformation
                 $accum[$pageId]['header']['prevLang'] = $previewLanguage;
                 $accum[$pageId]['items'] = [];
                 // Traverse tables:
-                foreach ($TCA as $table => $cfg) {
+                foreach ($GLOBALS['TCA'] as $table => $cfg) {
                     // Only those tables we want to work on:
                     if (GeneralUtility::inList($l10ncfg['tablelist'], $table)) {
                         if ($table === 'pages') {
