@@ -629,10 +629,10 @@ return false;
                 'label' => $this->getLanguageService()->getLL('import.xml.headline.title'),
                 'content' => $this->getTabContentXmlImport()
             ),
-            '2' => array(
-                'label' => $this->getLanguageService()->getLL('file.settings.downloads.title'),
-                'content' => $this->getTabContentXmlDownloads()
-            ),
+//            '2' => array(
+//                'label' => $this->getLanguageService()->getLL('file.settings.downloads.title'),
+//                'content' => $this->getTabContentXmlDownloads()
+//            ),
             '3' => array(
                 'label' => $this->getLanguageService()->getLL('l10nmgr.documentation.title'),
                 'content' => '<a class="btn btn-success" href="/' . ExtensionManagementUtility::siteRelPath('l10nmgr') . 'Documentation/manual.sxw" target="_new">Download</a>'
