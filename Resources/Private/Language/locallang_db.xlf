@@ -73,6 +73,9 @@
 			<trans-unit id="tx_l10nmgr_cfg.exclude" xml:space="preserve">
 				<source>Exclude elements (comma list of &quot;table:uid&quot; pairs):</source>
 			</trans-unit>
+			<trans-unit id="tx_l10nmgr_cfg.exclude_tree" xml:space="preserve">
+				<source>Exclude parts of page tree (selected pages and all subpages are excluded):</source>
+			</trans-unit>
 			<trans-unit id="tx_l10nmgr_cfg.include" xml:space="preserve">
 				<source>Include elements (comma list of &quot;table:uid&quot; pairs):</source>
 			</trans-unit>

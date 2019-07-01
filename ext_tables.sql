@@ -13,6 +13,7 @@ CREATE TABLE tx_l10nmgr_cfg (
 	displaymode int(11) DEFAULT '0' NOT NULL,
 	tablelist text,
 	exclude mediumtext,
+	exclude_tree mediumtext,
 	include mediumtext,
 	flexformdiff mediumtext,
 	metadata text,

@@ -18,6 +18,8 @@ namespace Localizationteam\L10nmgr\Model;
  * GNU General Public License for more details.
  * This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
+
+use TYPO3\CMS\Backend\Tree\Repository\PageTreeRepository;
 use TYPO3\CMS\Backend\Tree\View\PageTreeView;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
@@ -58,6 +60,7 @@ class L10nConfiguration
     public function load($id)
     {
         $this->l10ncfg = BackendUtility::getRecord('tx_l10nmgr_cfg', $id);
+        $this->mergeExcludeLists();
     }
 
     /**
@@ -68,11 +71,7 @@ class L10nConfiguration
     public function isLoaded()
     {
         // array must have values also!
-        if (is_array($this->l10ncfg) && (!empty($this->l10ncfg))) {
-            return true;
-        } else {
-            return false;
-        }
+        return is_array($this->l10ncfg) && (!empty($this->l10ncfg));
     }
 
     /**
@@ -211,5 +210,75 @@ class L10nConfiguration
     public function setSourcePid($id)
     {
         $this->sourcePid = (int)$id;
+    }
+
+    /**
+     * $this->l10ncfg['exclude'] consists of table:identifier pairs as a
+     * comma separated list.
+     *
+     * $this->l10ncfg['exclude_tree'] consists of a comma separated list of
+     * pages that need to be excluded as well as all their subpages (tree).
+     *
+     * This method prepares the table:identifier pairs for the pages from
+     * the pageTree and adds them to the list of $this->l10ncfg['exclude'].
+     *
+     * @return void
+     */
+    protected function mergeExcludeLists()
+    {
+        if (empty($this->l10ncfg['exclude_tree'])) {
+            return;
+        }
+        $entryPoints = GeneralUtility::trimExplode(',', $this->l10ncfg['exclude_tree'], true);
+        $pageTrees = $this->gePageTrees($entryPoints);
+        $pagesToExcludeArray = [];
+        foreach ($pageTrees as $pageTree) {
+            $this->addPageTreeToArray($pagesToExcludeArray, $pageTree);
+        }
+        array_unique($pagesToExcludeArray);
+
+        $excludeList = $this->l10ncfg['exclude'] ? ',' : '';
+        foreach ($pagesToExcludeArray as $page) {
+            $excludeList .= 'pages:' . $page . ',';
+        }
+        $this->l10ncfg['exclude'] .= $excludeList;
+    }
+
+    /**
+     * Fetches the pageTree for each entryPoint
+     *
+     * @param array $entryPoints
+     * @return array
+     */
+    protected function gePageTrees(array $entryPoints): array
+    {
+        if (empty($entryPoints)) {
+            return [];
+        }
+
+        $repository = GeneralUtility::makeInstance(PageTreeRepository::class);
+        foreach ($entryPoints as $k => &$entryPoint) {
+            $entryPoint = $repository->getTree($entryPoint);
+            if (!is_array($entryPoint)) {
+                unset($entryPoints[$k]);
+            }
+        }
+        return $entryPoints;
+    }
+
+    /**
+     * @param array $pagesToExcludeArray
+     * @param array $pageTreePage
+     * @return void
+     */
+    protected function addPageTreeToArray(array &$pagesToExcludeArray, array $pageTreePage)
+    {
+        $pagesToExcludeArray[] = $pageTreePage['uid'];
+        if (empty($pageTreePage['_children'])) {
+            return;
+        }
+        foreach ($pageTreePage['_children'] as $childPageTreePage) {
+            $this->addPageTreeToArray($pagesToExcludeArray, $childPageTreePage);
+        }
     }
 }

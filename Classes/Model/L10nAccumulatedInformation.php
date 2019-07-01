@@ -148,7 +148,6 @@ class L10nAccumulatedInformation
         $flexFormDiff = unserialize($l10ncfg['flexformdiff']);
         $flexFormDiff = $flexFormDiff[$sysLang];
         $excludeIndex = array_flip(GeneralUtility::trimExplode(',', $l10ncfg['exclude'], 1));
-        $tableUidConstraintIndex = array_flip(GeneralUtility::trimExplode(',', $l10ncfg['tableUidConstraint'], 1));
         // Init:
         /** @var Tools $t8Tools */
         $t8Tools = GeneralUtility::makeInstance(Tools::class);
@@ -174,92 +173,93 @@ class L10nAccumulatedInformation
         // Traverse tree elements:
         foreach ($tree->tree as $treeElement) {
             $pageId = $treeElement['row']['uid'];
-            if (!isset($excludeIndex['pages:' . $pageId]) && !in_array($treeElement['row']['doktype'], $this->disallowDoktypes)) {
-                $accum[$pageId]['header']['title'] = $treeElement['row']['title'];
-                $accum[$pageId]['header']['icon'] = $treeElement['HTML'];
-                $accum[$pageId]['header']['prevLang'] = $previewLanguage;
-                $accum[$pageId]['items'] = [];
-                // Traverse tables:
-                foreach ($GLOBALS['TCA'] as $table => $cfg) {
-                    $fileList = '';
-                    // Only those tables we want to work on:
-                    if (GeneralUtility::inList($l10ncfg['tablelist'], $table)) {
-                        if ($table === 'pages') {
-                            $accum[$pageId]['items'][$table][$pageId] = $t8Tools->translationDetails(
-                                'pages',
-                                BackendUtility::getRecordWSOL('pages', $pageId),
-                                $sysLang,
-                                $flexFormDiff,
-                                $previewLanguage
-                            );
-                            $this->_increaseInternalCounters($accum[$pageId]['items'][$table][$pageId]['fields']);
-                        } else {
-                            $allRows = $t8Tools->getRecordsToTranslateFromTable($table, $pageId);
-                            if (is_array($allRows)) {
-                                if (count($allRows)) {
-                                    // Now, for each record, look for localization:
-                                    foreach ($allRows as $row) {
-                                        BackendUtility::workspaceOL($table, $row);
-                                        if ($table === 'sys_file_reference') {
-                                            $fileList .= $fileList ? ',' . (int)$row['uid_local'] : (int)$row['uid_local'];
-                                        }
-                                        if (is_array($row) && count($tableUidConstraintIndex) > 0) {
-                                            if (is_array($row) && isset($tableUidConstraintIndex[$table . ':' . $row['uid']])) {
-                                                $accum[$pageId]['items'][$table][$row['uid']] = $t8Tools->translationDetails(
-                                                    $table,
-                                                    $row,
-                                                    $sysLang,
-                                                    $flexFormDiff,
-                                                    $previewLanguage
-                                                );
-                                                $this->_increaseInternalCounters($accum[$pageId]['items'][$table][$row['uid']]['fields']);
-                                            }
-                                        } else {
-                                            if (is_array($row) && !isset($excludeIndex[$table . ':' . $row['uid']])) {
-                                                $accum[$pageId]['items'][$table][$row['uid']] = $t8Tools->translationDetails(
-                                                    $table,
-                                                    $row,
-                                                    $sysLang,
-                                                    $flexFormDiff,
-                                                    $previewLanguage
-                                                );
-                                                $this->_increaseInternalCounters($accum[$pageId]['items'][$table][$row['uid']]['fields']);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if ($table === 'sys_file_reference' && !empty($fileList)) {
-                        $fileList = array_keys(array_flip(GeneralUtility::intExplode(',', $fileList, true)));
-                        if (!empty($fileList)) {
-                            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('sys_file_metadata');
-                            $metaData = $queryBuilder->select('uid')
-                                ->from('sys_file_metadata')
-                                ->where(
-                                    $queryBuilder->expr()->eq(
-                                        'sys_language_uid',
-                                        $queryBuilder->createNamedParameter((int)$previewLanguage, \PDO::PARAM_INT)
-                                    ),
-                                    $queryBuilder->expr()->in(
-                                        'file',
-                                        $fileList
-                                    )
-                                )
-                                ->orderBy('uid')
-                                ->execute()
-                                ->fetchAll();
+            if (isset($excludeIndex['pages:' . $pageId]) || in_array($treeElement['row']['doktype'], $this->disallowDoktypes)) {
+                continue;
+            }
 
-                            if (!empty($metaData)) {
-                                $l10ncfg['include'] .= $l10ncfg['include'] ? ',' : '';
-                                foreach ($metaData as $data) {
-                                    $l10ncfg['include'] .= 'sys_file_metadata:' . $data['uid'] . ',';
-                                }
-                                $l10ncfg['include'] = rtrim($l10ncfg['include'], ',');
-                            }
-                        }
+            $accum[$pageId]['header']['title'] = $treeElement['row']['title'];
+            $accum[$pageId]['header']['icon'] = $treeElement['HTML'];
+            $accum[$pageId]['header']['prevLang'] = $previewLanguage;
+            $accum[$pageId]['items'] = [];
+            // Traverse tables:
+            foreach ($GLOBALS['TCA'] as $table => $cfg) {
+                $fileList = '';
+                // Only those tables we want to work on:
+                if (!GeneralUtility::inList($l10ncfg['tablelist'], $table)) {
+                    continue;
+                }
+                if ($table === 'pages') {
+                    $accum[$pageId]['items'][$table][$pageId] = $t8Tools->translationDetails(
+                        'pages',
+                        BackendUtility::getRecordWSOL('pages', $pageId),
+                        $sysLang,
+                        $flexFormDiff,
+                        $previewLanguage
+                    );
+                    $this->_increaseInternalCounters($accum[$pageId]['items'][$table][$pageId]['fields']);
+                } else {
+                    $allRows = $t8Tools->getRecordsToTranslateFromTable($table, $pageId);
+                    if (!is_array($allRows)) {
+                        continue;
                     }
+                    if (empty($allRows)) {
+                        continue;
+                    }
+
+                    // Now, for each record, look for localization:
+                    foreach ($allRows as $row) {
+                        BackendUtility::workspaceOL($table, $row);
+                        if (!is_array($row)) {
+                            continue;
+                        }
+                        if (isset($excludeIndex[$table . ':' . $row['uid']])) {
+                            continue;
+                        }
+                        if ($table === 'sys_file_reference') {
+                            $fileList .= $fileList ? ',' . (int)$row['uid_local'] : (int)$row['uid_local'];
+                        }
+                        $accum[$pageId]['items'][$table][$row['uid']] = $t8Tools->translationDetails(
+                            $table,
+                            $row,
+                            $sysLang,
+                            $flexFormDiff,
+                            $previewLanguage
+                        );
+                        $this->_increaseInternalCounters($accum[$pageId]['items'][$table][$row['uid']]['fields']);
+                    }
+                }
+
+                if ($table === 'sys_file_reference' && !empty($fileList)) {
+                    $fileList = array_keys(array_flip(GeneralUtility::intExplode(',', $fileList, true)));
+                    if (empty($fileList)) {
+                        continue;
+                    }
+                    $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('sys_file_metadata');
+                    $metaData = $queryBuilder->select('uid')
+                        ->from('sys_file_metadata')
+                        ->where(
+                            $queryBuilder->expr()->eq(
+                                'sys_language_uid',
+                                $queryBuilder->createNamedParameter((int)$previewLanguage, \PDO::PARAM_INT)
+                            ),
+                            $queryBuilder->expr()->in(
+                                'file',
+                                $fileList
+                            )
+                        )
+                        ->orderBy('uid')
+                        ->execute()
+                        ->fetchAll();
+
+                    if (empty($metaData)) {
+                        continue;
+                    }
+
+                    $l10ncfg['include'] .= $l10ncfg['include'] ? ',' : '';
+                    foreach ($metaData as $data) {
+                        $l10ncfg['include'] .= 'sys_file_metadata:' . $data['uid'] . ',';
+                    }
+                    $l10ncfg['include'] = rtrim($l10ncfg['include'], ',');
                 }
             }
         }

@@ -14,7 +14,7 @@ return [
         'fe_admin_fieldList' => 'title, depth, tablelist, exclude',
     ],
     'interface' => [
-        'showRecordFieldList' => 'title,depth,pages,sourceLangStaticId,tablelist,exclude,incfcewithdefaultlanguage,pretranslatecontent,overrideexistingtranslations'
+        'showRecordFieldList' => 'title,depth,pages,sourceLangStaticId,tablelist,exclude,exclude_tree,incfcewithdefaultlanguage,pretranslatecontent,overrideexistingtranslations'
     ],
     'columns' => [
         'title' => [
@@ -103,6 +103,24 @@ return [
                 'rows' => 3,
             ]
         ],
+        'exclude_tree' => [
+            'exclude' => 1,
+            'label' => $l10n . ':tx_l10nmgr_cfg.exclude_tree',
+            'config' => [
+                'type' => 'select',
+                'renderType' => 'selectTree',
+                'foreign_table' => 'pages',
+                'foreign_table_where' => 'AND pages.sys_language_uid=0 ORDER BY pages.sorting',
+                'size' => 25,
+                'treeConfig' => [
+                    'parentField' => 'pid',
+                    'appearance' => [
+                        'expandAll' => false,
+                        'showHeader' => true,
+                    ],
+                ],
+            ]
+        ],
         'include' => [
             'exclude' => 1,
             'label' => $l10n . ':tx_l10nmgr_cfg.include',
@@ -164,7 +182,7 @@ return [
         ]
     ],
     'types' => [
-        0 => ['showitem' => 'title,filenameprefix, depth, pages, sourceLangStaticId, tablelist, exclude, include, metadata, displaymode, incfcewithdefaultlanguage, pretranslatecontent, overrideexistingtranslations']
+        0 => ['showitem' => 'title,filenameprefix, depth, pages, sourceLangStaticId, tablelist, exclude, exclude_tree, include, metadata, displaymode, incfcewithdefaultlanguage, pretranslatecontent, overrideexistingtranslations']
     ],
     'palettes' => [
         '1' => ['showitem' => '']
