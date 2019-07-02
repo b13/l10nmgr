@@ -272,18 +272,18 @@ class L10nConfiguration
     }
 
     /**
-     * @param array $pagesToExcludeArray
+     * @param array $pagesToExclude
      * @param array $pageTreePage
      * @return void
      */
-    protected function addPageTreeToArray(array &$pagesToExcludeArray, array $pageTreePage)
+    protected function addPageTreeToArray(array &$pagesToExclude, array $pageTreePage)
     {
-        $pagesToExcludeArray[] = $pageTreePage['uid'];
+        $pagesToExclude[] = $pageTreePage['uid'];
         if (empty($pageTreePage['_children'])) {
             return;
         }
         foreach ($pageTreePage['_children'] as $childPageTreePage) {
-            $this->addPageTreeToArray($pagesToExcludeArray, $childPageTreePage);
+            $this->addPageTreeToArray($pagesToExclude, $childPageTreePage);
         }
     }
 }
