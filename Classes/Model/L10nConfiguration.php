@@ -229,16 +229,20 @@ class L10nConfiguration
         if (empty($this->l10ncfg['exclude_tree'])) {
             return;
         }
-        $entryPoints = GeneralUtility::trimExplode(',', $this->l10ncfg['exclude_tree'], true);
-        $pageTrees = $this->gePageTrees($entryPoints);
-        $pagesToExcludeArray = [];
-        foreach ($pageTrees as $pageTree) {
-            $this->addPageTreeToArray($pagesToExcludeArray, $pageTree);
+        $pageTrees = $this->getPageTrees();
+
+        if (empty($pageTrees)) {
+            return;
         }
-        array_unique($pagesToExcludeArray);
+
+        $pagesToExclude = [];
+        foreach ($pageTrees as $pageTree) {
+            $this->addPageTreeToArray($pagesToExclude, $pageTree);
+        }
+        array_unique($pagesToExclude);
 
         $excludeList = $this->l10ncfg['exclude'] ? ',' : '';
-        foreach ($pagesToExcludeArray as $page) {
+        foreach ($pagesToExclude as $page) {
             $excludeList .= 'pages:' . $page . ',';
         }
         $this->l10ncfg['exclude'] .= $excludeList;
@@ -247,11 +251,12 @@ class L10nConfiguration
     /**
      * Fetches the pageTree for each entryPoint
      *
-     * @param array $entryPoints
      * @return array
      */
-    protected function gePageTrees(array $entryPoints): array
+    protected function getPageTrees(): array
     {
+        GeneralUtility::trimExplode(',', $this->l10ncfg['exclude_tree'], true);
+
         if (empty($entryPoints)) {
             return [];
         }
