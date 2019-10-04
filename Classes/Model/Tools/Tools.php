@@ -147,6 +147,12 @@ class Tools
         // Find all system languages:
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('sys_language');
         $this->sys_languages = $queryBuilder->select('*')->from('sys_language')->execute()->fetchAll();
+        if (is_array($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['filterManipulation'])) {
+            foreach ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['filterManipulation'] as $classReference) {
+                $processingObject = GeneralUtility::makeInstance($classReference);
+                $this->filters = $processingObject->manipulateFilters($this->filters);
+            }
+        }
     }
 
     /**
