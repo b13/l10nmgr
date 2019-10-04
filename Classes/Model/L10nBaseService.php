@@ -975,18 +975,30 @@ class L10nBaseService implements LoggerAwareInterface
             return;
         }
 
-        $slug = GeneralUtility::makeInstance(
-            SlugHelper::class,
-            'pages',
-            'slug',
-            $GLOBALS['TCA']['pages']['columns']['slug']['config'] ?? []
-        );
-
-        $proposal = $slug->generate($recordData, $recordData['pid']);
-        $state = RecordStateFactory::forName('pages')->fromArray($recordData, $recordData['pid'], $recordData['uid']);
-        if (!$slug->isUniqueInSite($proposal, $state)) {
-            $proposal = $slug->buildSlugForUniqueInSite($proposal, $state);
+        // Hook for generating a slug
+        if (is_array($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['slugGeneration'])) {
+            foreach ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['slugGeneration'] as $classReference) {
+                $processingObject = GeneralUtility::makeInstance($classReference);
+                $proposal = $processingObject->generateSlug($recordData, $pageId, $sysLang);
+            }
         }
+
+        if (empty($proposal)) {
+            $slug = GeneralUtility::makeInstance(
+                SlugHelper::class,
+                'pages',
+                'slug',
+                $GLOBALS['TCA']['pages']['columns']['slug']['config'] ?? []
+            );
+
+            $proposal = $slug->generate($recordData, $recordData['pid']);
+
+            $state = RecordStateFactory::forName('pages')->fromArray($recordData, $recordData['pid'], $recordData['uid']);
+            if (!$slug->isUniqueInSite($proposal, $state)) {
+                $proposal = $slug->buildSlugForUniqueInSite($proposal, $state);
+            }
+        }
+
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('pages');
         $queryBuilder->update('pages')
             ->set('slug', $proposal)
