@@ -61,6 +61,7 @@ class Tools
         'fieldTypes' => 'text,input',
         'noEmptyValues' => true,
         'noIntegers' => true,
+        'excludeTranslatedFields' => false,
         'l10n_categories' => '', // could be "text,media" for instance.
         // Never export those fields
         'excludes' => [
@@ -647,6 +648,9 @@ class Tools
                         break;
                     case 'useOverlay':
                         if (count($tInfo['translations'])) {
+                            if ($this->filters['excludeTranslatedFields']) {
+                                continue 2;
+                            }
                             $this->detailsOutput['log'][] = 'Mode: translate existing record';
                             $translationUID = $tInfo['translations'][$sysLang]['uid'];
                             $translationRecord = BackendUtility::getRecordWSOL(
