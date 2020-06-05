@@ -25,6 +25,7 @@ namespace Localizationteam\L10nmgr\View;
 use Localizationteam\L10nmgr\Model\L10nConfiguration;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessageRendererResolver;
@@ -387,7 +388,7 @@ abstract class AbstractExportView
                 $exportData['l10ncfg_id'],
                 $exportData['exportType'],
                 $exportData['translation_lang'],
-                sprintf('%suploads/tx_l10nmgr/jobs/out/%s', PATH_site, $exportData['filename'])
+                sprintf('%suploads/tx_l10nmgr/jobs/out/%s', Environment::getPublicPath() . '/', $exportData['filename'])
             );
         }
         $out = sprintf(
@@ -412,7 +413,11 @@ abstract class AbstractExportView
     public function saveExportFile($fileContent)
     {
         $fileExportName = 'uploads/tx_l10nmgr/jobs/out/' . $this->getFilename();
-        GeneralUtility::writeFile(PATH_site . $fileExportName, $fileContent);
+        $fullFile = Environment::getPublicPath() . '/' . $fileExportName;
+        if (!is_dir(dirname($fullFile))) {
+            GeneralUtility::mkdir_deep(dirname($fullFile));
+        }
+        GeneralUtility::writeFile($fullFile, $fileContent);
         return $fileExportName;
     }
 

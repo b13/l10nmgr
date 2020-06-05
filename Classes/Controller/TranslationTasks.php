@@ -24,16 +24,16 @@ namespace Localizationteam\L10nmgr\Controller;
  */
 use Localizationteam\L10nmgr\Hooks\Tcemain;
 use Localizationteam\L10nmgr\Model\Tools\Tools;
-use TYPO3\CMS\Backend\Module\BaseScriptClass;
 use TYPO3\CMS\Backend\Template\DocumentTemplate;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Http\HtmlResponse;
 use TYPO3\CMS\Core\Imaging\IconFactory;
-use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\PathUtility;
 
-class TranslationTasks extends BaseScriptClass
+class TranslationTasks extends BaseModule
 {
     /**
      * @var DocumentTemplate
@@ -169,7 +169,7 @@ class TranslationTasks extends BaseScriptClass
                 }
                 $icon = GeneralUtility::makeInstance(IconFactory::class)->getIconForRecord($el[0], $rec_on);
                 $icon = BackendUtility::wrapClickMenuOnIcon($icon, $el[0], $rec_on['uid'], 2);
-                $linkToIt = '<a href="#" onclick="' . htmlspecialchars('parent.list_frame.location.href="' . $GLOBALS['BACK_PATH'] . ExtensionManagementUtility::siteRelPath('l10nmgr') . 'cm2/index.php?table=' . $el[0] . '&uid=' . $el[1] . '"; return false;') . '" target="listframe">
+                $linkToIt = '<a href="#" onclick="' . htmlspecialchars('parent.list_frame.location.href="' . PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName('EXT:l10nmgr')) . 'cm2/index.php?table=' . $el[0] . '&uid=' . $el[1] . '"; return false;') . '" target="listframe">
 	' . BackendUtility::getRecordTitle($el[0], $rec_on, true) . '
 	</a>';
                 if ($el[0] == 'pages') {
@@ -177,7 +177,7 @@ class TranslationTasks extends BaseScriptClass
                     $newPageModule = trim($this->getBackendUser()->getTSConfigVal('options.overridePageModule'));
                     $pageModule = BackendUtility::isModuleSetInTBE_MODULES($newPageModule) ? $newPageModule : 'web_layout';
                     $path_module_path = GeneralUtility::resolveBackPath($GLOBALS['BACK_PATH'] . '../' . substr($GLOBALS['TBE_MODULES']['_PATHS'][$pageModule],
-                            strlen(PATH_site)));
+                            strlen(Environment::getPublicPath() . '/')));
                     $onclick = 'parent.list_frame.location.href="' . $path_module_path . '?id=' . $el[1] . '"; return false;';
                     $pmLink = '<a href="#" onclick="' . htmlspecialchars($onclick) . '" target="listframe"><i>[Edit page]</i></a>';
                 } else {

@@ -29,6 +29,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Exception;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
@@ -263,7 +264,7 @@ class Export extends L10nCommand
                 $output->writeln('<error>' . $l10nmgrGetXML->renderExportsCli() . LF . '</error>');
             } else {
                 // Save export to XML file
-                $xmlFileName = PATH_site . $l10nmgrGetXML->render();
+                $xmlFileName = Environment::getPublicPath() . '/' . $l10nmgrGetXML->render();
                 $l10nmgrGetXML->saveExportInformation();
                 // If email notification is set send export files to responsible translator
                 if ($lConf['enable_notification'] == 1) {

@@ -14,10 +14,11 @@ $EM_CONF[$_EXTKEY] = [
     'author_company' => 'Localization Manager Team',
     'constraints' => [
         'depends' => [
-            'typo3' => '9.5.0',
-            'static_info_tables' => '6.4.2-0.0.0'
+            'typo3' => '9.5.0-10.4.99'
         ],
         'conflicts' => [],
-        'suggests' => []
+        'suggests' => [
+            'static_info_tables' => '6.4.2-0.0.0'
+        ]
     ]
 ];
