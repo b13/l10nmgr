@@ -25,12 +25,12 @@ namespace Localizationteam\L10nmgr\Controller;
  */
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use TYPO3\CMS\Backend\Module\BaseScriptClass;
+use TYPO3\CMS\Backend\Routing\UriBuilder;
 use TYPO3\CMS\Backend\Template\ModuleTemplate;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Http\HtmlResponse;
 use TYPO3\CMS\Core\Imaging\IconFactory;
-use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
@@ -41,15 +41,10 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * @packageTYPO3
  * @subpackage tx_l10nmgr
  */
-class ConfigurationManager extends BaseScriptClass
+class ConfigurationManager extends BaseModule
 {
     var $pageinfo;
-    /**
-     * Document Template Object
-     *
-     * @var \TYPO3\CMS\Backend\Template\DocumentTemplate
-     */
-    public $doc;
+
     /**
      * @var array Cache of the page details already fetched from the database
      */
@@ -83,9 +78,9 @@ class ConfigurationManager extends BaseScriptClass
         $this->iconFactory = GeneralUtility::makeInstance(IconFactory::class);
         $this->moduleTemplate = GeneralUtility::makeInstance(ModuleTemplate::class);
         $this->getLanguageService()->includeLLFile('EXT:l10nmgr/Resources/Private/Language/Modules/ConfigurationManager/locallang.xlf');
-        $this->MCONF = array(
+        $this->MCONF = [
             'name' => $this->moduleName,
-        );
+        ];
     }
 
     /**
@@ -96,7 +91,7 @@ class ConfigurationManager extends BaseScriptClass
      * @param ResponseInterface $response
      * @return ResponseInterface the response with the content
      */
-    public function mainAction(ServerRequestInterface $request, ResponseInterface $response)
+    public function mainAction(ServerRequestInterface $request)
     {
         $GLOBALS['SOBE'] = $this;
         $this->init();
@@ -106,8 +101,7 @@ class ConfigurationManager extends BaseScriptClass
         $this->checkSubExtObj();
         $this->main();
         $this->moduleTemplate->setContent($this->content);
-        $response->getBody()->write($this->moduleTemplate->renderContent());
-        return $response;
+        return new HtmlResponse($this->moduleTemplate->renderContent());
     }
 
     /**
@@ -117,7 +111,7 @@ class ConfigurationManager extends BaseScriptClass
      */
     public function init()
     {
-        $this->getBackendUser()->modAccess($this->MCONF, 1);
+        $this->getBackendUser()->modAccess($this->MCONF);
         parent::init();
     }
 
@@ -129,10 +123,8 @@ class ConfigurationManager extends BaseScriptClass
      */
     public function main()
     {
-        // Get a template instance and load the template
-        $this->moduleTemplate->backPath = $GLOBALS['BACK_PATH'];
         // NOTE: this module uses the same template as the CM1 module
-        $this->moduleTemplate->form = '<form action="" method="POST">';
+        $this->moduleTemplate->setForm('<form action="" method="POST">');
         // Get the actual content
         $this->content = $this->moduleContent();
     }
@@ -171,6 +163,7 @@ class ConfigurationManager extends BaseScriptClass
             $content .= '</thead>';
             $content .= '<tbody>';
             $informationIcon = $this->iconFactory->getIcon('actions-document-info');
+            $uriBuilder = GeneralUtility::makeInstance(UriBuilder::class);
             foreach ($l10nConfigurations as $record) {
                 $configurationDetails = '<a class="tooltip" href="#tooltip_' . $record['uid'] . '">' . $informationIcon . '</a>';
                 $configurationDetails .= '<div style="display:none;" id="tooltip_' . $record['uid'] . '" class="infotip">';
@@ -178,7 +171,7 @@ class ConfigurationManager extends BaseScriptClass
                 $configurationDetails .= '</div>';
                 $content .= '<tr class="db_list_normal">';
                 $content .= '<td>' . $configurationDetails . '</td>';
-                $content .= '<td><a href="' . BackendUtility::getModuleUrl('LocalizationManager',
+                $content .= '<td><a href="' . $uriBuilder->buildUriFromRoute('LocalizationManager',
                         array(
                             'id' => $record['pid'],
                             'srcPID' => $this->id,

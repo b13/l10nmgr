@@ -31,6 +31,7 @@ use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3\CMS\Lang\LanguageService;
 
 /**
@@ -85,7 +86,7 @@ class ClickMenu
 
                 $localItems[] = $backRef->linkItem(
                     $this->getLanguageService()->getLLL("cm1_title", $LL),
-                    $backRef->excludeIcon('<img src="' . ExtensionManagementUtility::siteRelPath("l10nmgr") . 'cm1/cm_icon.gif" width="15" height="12" border="0" align="top" />'),
+                    $backRef->excludeIcon('<img src="' . PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName('EXT:l10nmgr/cm1/cm_icon.gif')) . '" width="15" height="12" border="0" align="top" />'),
                     $backRef->urlRefForCM($url),
                     1 // Disables the item in the top-bar. Set this to zero if you with the item to appear in the top bar!
                 );

@@ -18,6 +18,7 @@ namespace Localizationteam\L10nmgr\Controller;
  * GNU General Public License for more details.
  * This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
+
 use Exception;
 use Localizationteam\L10nmgr\Model\CatXmlImportManager;
 use Localizationteam\L10nmgr\Model\L10nBaseService;
@@ -33,18 +34,19 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Swift_Attachment;
 use TYPO3\CMS\Backend\Configuration\TranslationConfigurationProvider;
-use TYPO3\CMS\Backend\Module\BaseScriptClass;
 use TYPO3\CMS\Backend\Routing\Router;
 use TYPO3\CMS\Backend\Routing\UriBuilder;
-use TYPO3\CMS\Backend\Template\DocumentTemplate;
 use TYPO3\CMS\Backend\Template\ModuleTemplate;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Core\Core\Environment;
+use TYPO3\CMS\Core\Http\HtmlResponse;
 use TYPO3\CMS\Core\Imaging\IconFactory;
 use TYPO3\CMS\Core\Mail\MailMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessageRendererResolver;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\PathUtility;
 
 /**
  * l10nmgr module Configuration Manager
@@ -64,14 +66,8 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * @package TYPO3
  * @subpackage tx_l10nmgr
  */
-class LocalizationManager extends BaseScriptClass
+class LocalizationManager extends BaseModule
 {
-    /**
-     * Document Template Object
-     *
-     * @var DocumentTemplate
-     */
-    public $doc;
     /**
      * @var array
      */
@@ -130,7 +126,7 @@ class LocalizationManager extends BaseScriptClass
      * @param ResponseInterface $response
      * @return ResponseInterface the response with the content
      */
-    public function mainAction(ServerRequestInterface $request, ResponseInterface $response)
+    public function mainAction(ServerRequestInterface $request)
     {
         $GLOBALS['SOBE'] = $this;
         $this->init();
@@ -140,8 +136,7 @@ class LocalizationManager extends BaseScriptClass
         $this->checkSubExtObj();
         $this->main();
         $this->moduleTemplate->setContent($this->content);
-        $response->getBody()->write($this->moduleTemplate->renderContent());
-        return $response;
+        return new HtmlResponse($this->moduleTemplate->renderContent());
     }
 
     /**
@@ -151,7 +146,7 @@ class LocalizationManager extends BaseScriptClass
      */
     public function init()
     {
-        $this->getBackendUser()->modAccess($this->MCONF, 1);
+        $this->getBackendUser()->modAccess($this->MCONF);
         parent::init();
     }
 
@@ -204,7 +199,7 @@ return false;
         <div class="panel-body">
             <div class="row">';
                 $this->content .= '
-    <div class="col-md-6"> 
+    <div class="col-md-6">
         <div class="form">
             <div class="form-section">' .
                     $this->getFuncMenu($this->id,
@@ -312,7 +307,7 @@ return false;
             $mainParams = array('id' => $mainParams);
         }
         if (!$script) {
-            $script = basename(PATH_thisScript);
+            $script = basename(Environment::getCurrentScript());
         }
         if (GeneralUtility::_GP('route')) {
             /** @var Router $router */
@@ -635,7 +630,7 @@ return false;
             ),
             '3' => array(
                 'label' => $this->getLanguageService()->getLL('l10nmgr.documentation.title'),
-                'content' => '<a class="btn btn-success" href="/' . ExtensionManagementUtility::siteRelPath('l10nmgr') . 'Documentation/manual.sxw" target="_new">Download</a>'
+                'content' => '<a class="btn btn-success" href="/' . PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName('EXT:l10nmgr')) . 'Documentation/manual.sxw" target="_new">Download</a>'
             )
         );
         $info = $this->moduleTemplate->getDynamicTabMenu($menuItems, 'ddtabs');
@@ -890,7 +885,7 @@ return false;
         $tabContentXmlDownloads = '<h4>' . $this->getLanguageService()->getLL('file.settings.available.title') . '</h4><ul>';
         foreach ($allowedSettingFiles as $settingId => $settingFileName) {
             $absoluteFileName = GeneralUtility::getFileAbsFileName('EXT:l10nmgr/Configuration/Settings/' . $settingFileName);
-            $currentFile = GeneralUtility::resolveBackPath($BACK_PATH . ExtensionManagementUtility::siteRelPath('l10nmgr') . 'Configuration/Settings/' . $settingFileName);
+            $currentFile = PathUtility::getAbsoluteWebPath($absoluteFileName);
             if (is_file($absoluteFileName) && is_readable($absoluteFileName)) {
                 $size = GeneralUtility::formatSize((int)filesize($absoluteFileName), ' Bytes| KB| MB| GB');
                 $tabContentXmlDownloads .= '<li><a class="t3-link" href="' . str_replace('%2F', '/',
@@ -919,7 +914,7 @@ return false;
         $connection = ftp_connect($this->lConf['ftp_server']);
         if ($connection) {
             if (@ftp_login($connection, $this->lConf['ftp_server_username'], $this->lConf['ftp_server_password'])) {
-                if (ftp_put($connection, $this->lConf['ftp_server_path'] . $xmlFileName, PATH_site . $filename,
+                if (ftp_put($connection, $this->lConf['ftp_server_path'] . $xmlFileName, Environment::getPublicPath() . '/' . $filename,
                     FTP_BINARY)) {
                     ftp_close($connection);
                 } else {
@@ -954,7 +949,7 @@ return false;
         // If at least a recipient is indeed defined, proceed with sending the mail
         $recipients = GeneralUtility::trimExplode(',', $this->lConf['email_recipient']);
         if (count($recipients) > 0) {
-            $fullFilename = PATH_site . 'uploads/tx_l10nmgr/jobs/out/' . $xmlFileName;
+            $fullFilename = Environment::getPublicPath() . '/uploads/tx_l10nmgr/jobs/out/' . $xmlFileName;
             // Get source & target language ISO codes
             $sourceStaticLangArr = BackendUtility::getRecord('static_languages',
                 $l10nmgrCfgObj->l10ncfg['sourceLangStaticId'], 'lg_iso_2');

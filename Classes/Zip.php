@@ -2,6 +2,7 @@
 
 namespace Localizationteam\L10nmgr;
 
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
@@ -169,7 +170,7 @@ class Zip
     public function extractFile($file)
     {
         if (is_file($file)) {
-            $tempDir = PATH_site . 'typo3temp/' . md5(microtime()) . '/';
+            $tempDir = Environment::getPublicPath() . '/typo3temp/' . md5(microtime()) . '/';
             GeneralUtility::mkdir($tempDir);
             if (is_dir($tempDir)) {
                 // This is if I want to check the content:
@@ -227,7 +228,7 @@ class Zip
      */
     public function removeDir($tempDir)
     {
-        $testDir = PATH_site . 'typo3temp/';
+        $testDir = Environment::getPublicPath() . '/typo3temp/';
         if (!GeneralUtility::isFirstPartOfStr($tempDir, $testDir)) {
             die($tempDir . ' was not within ' . $testDir);
         }

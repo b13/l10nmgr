@@ -32,6 +32,7 @@ use Localizationteam\L10nmgr\Zip;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Exception;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -515,9 +516,9 @@ class Import extends L10nCommand
             if ($filesToDownload != false) {
                 // Check that download directory exists
                 $downloadFolder = 'uploads/tx_l10nmgr/jobs/in/';
-                $downloadPath = PATH_site . $downloadFolder;
+                $downloadPath = Environment::getPublicPath() . '/' . $downloadFolder;
                 if (!is_dir(GeneralUtility::getFileAbsFileName($downloadPath))) {
-                    GeneralUtility::mkdir_deep(PATH_site . $downloadFolder);
+                    GeneralUtility::mkdir_deep($downloadFolder);
                 }
                 foreach ($filesToDownload as $aFile) {
                     // Ignore current directory and reference to upper level

@@ -5,12 +5,11 @@
 	"homepage": "https://docs.typo3.org/typo3cms/extensions/l10nmgr/",
 	"license": ["GPL-2.0-or-later"],
 	"keywords": ["TYPO3 CMS", "L10N", "I18N", "T9N", "localization", "translation", "internationalization", "language"],
-	"support": {
-		"issues": "https://forge.typo3.org/projects/extension-l10nmgr/issues"
-	},
 	"require": {
-		"sjbr/static-info-tables": "^6.7.0",
-		"typo3/cms-core": "^9.5.0"
+		"typo3/cms-core": "^9.5.0 || ^10.0.0"
+	},
+	"suggest": {
+		"sjbr/static-info-tables": "Additional information stored into meta information when exporting"
 	},
 	"autoload": {
 		"psr-4": {
@@ -18,7 +17,11 @@
 		}
 	},
 	"replace": {
-		"l10nmgr": "self.version",
 		"typo3-ter/l10nmgr": "self.version"
+	},
+	"extra": {
+		"typo3/cms": {
+			"extension-key": "l10nmgr"
+		}
 	}
 }

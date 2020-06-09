@@ -49,6 +49,8 @@ use TYPO3\CMS\Core\Utility\MathUtility;
  */
 class Tools
 {
+    protected $tcaTableTypeConfigurationCache;
+
     // External:
     /**
      * @var array
@@ -362,7 +364,7 @@ class Tools
                 $isRTE = true;
                 // If not, then we must check per type configuration
             } else {
-                $typesDefinition = BackendUtility::getTCAtypes($table, $contentRow, true);
+                $typesDefinition = $this->getTCAtypes($table, $contentRow, true);
                 $isRTE = !empty($typesDefinition[$field]['spec']['richtext']);
             }
         }
@@ -528,6 +530,9 @@ class Tools
      */
     protected function getSingleRecordToTranslate($table, $uid, $previewLanguage = 0)
     {
+        if (!isset($GLOBALS['TCA'][$table]['ctrl']['languageField'])) {
+            return false;
+        }
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()
             ->removeAll()
@@ -598,7 +603,7 @@ class Tools
             $this->indexFilterObjects[$pageId] = [];
             $c = 0;
             foreach ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['l10nmgr']['indexFilter'] as $objArray) {
-                $this->indexFilterObjects[$pageId][$c] = &GeneralUtility::getUserObj($objArray[0]);
+                $this->indexFilterObjects[$pageId][$c] = GeneralUtility::makeInstance($objArray[0]);
                 $this->indexFilterObjects[$pageId][$c]->init($pageId);
                 $c++;
             }
@@ -1146,6 +1151,9 @@ class Tools
      */
     public function getRecordsToTranslateFromTable($table, $pageId, $previewLanguage = 0)
     {
+        if (!isset($GLOBALS['TCA'][$table]['ctrl']['languageField'])) {
+            return [];
+        }
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($table);
         $queryBuilder->getRestrictions()
             ->removeAll()
@@ -1342,5 +1350,156 @@ class Tools
             $errorLog = $tce->errorLog;
         }
         return [$remove, $TCEmain_cmd, $TCEmain_data, $errorLog];
+    }
+
+
+
+    /**
+     * Returns the "types" configuration parsed into an array for the record, $rec, from table, $table
+     *
+     * @param string $table Table name (present in TCA)
+     * @param array $rec Record from $table
+     * @param bool $useFieldNameAsKey If $useFieldNameAsKey is set, then the fieldname is associative keys in the return array, otherwise just numeric keys.
+     * @return array|null
+     */
+    public function getTCAtypes($table, $rec, $useFieldNameAsKey = false)
+    {
+        if (isset($GLOBALS['TCA'][$table])) {
+            // Get type value:
+            $fieldValue = $this->getTCAtypeValue($table, $rec);
+            $cacheIdentifier = $table . '-type-' . $fieldValue . '-fnk-' . $useFieldNameAsKey;
+
+            // Fetch from first-level-cache if available
+            if (isset($this->tcaTableTypeConfigurationCache[$cacheIdentifier])) {
+                return $this->tcaTableTypeConfigurationCache[$cacheIdentifier];
+            }
+
+            // Get typesConf
+            $typesConf = $GLOBALS['TCA'][$table]['types'][$fieldValue] ?? null;
+            // Get fields list and traverse it
+            $fieldList = explode(',', $typesConf['showitem']);
+
+            // Add subtype fields e.g. for a valid RTE transformation
+            // The RTE runs the DB -> RTE transformation only, if the RTE field is part of the getTCAtypes array
+            if (isset($typesConf['subtype_value_field'])) {
+                $subType = $rec[$typesConf['subtype_value_field']];
+                if (isset($typesConf['subtypes_addlist'][$subType])) {
+                    $subFields = GeneralUtility::trimExplode(',', $typesConf['subtypes_addlist'][$subType], true);
+                    $fieldList = array_merge($fieldList, $subFields);
+                }
+            }
+
+            // Add palette fields e.g. for a valid RTE transformation
+            $paletteFieldList = [];
+            foreach ($fieldList as $fieldData) {
+                $fieldDataArray = GeneralUtility::trimExplode(';', $fieldData);
+                // first two entries would be fieldname and altTitle, they are not used here.
+                $pPalette = $fieldDataArray[2] ?? null;
+                if ($pPalette
+                    && isset($GLOBALS['TCA'][$table]['palettes'][$pPalette])
+                    && is_array($GLOBALS['TCA'][$table]['palettes'][$pPalette])
+                    && isset($GLOBALS['TCA'][$table]['palettes'][$pPalette]['showitem'])
+                ) {
+                    $paletteFields = GeneralUtility::trimExplode(',', $GLOBALS['TCA'][$table]['palettes'][$pPalette]['showitem'], true);
+                    foreach ($paletteFields as $paletteField) {
+                        if ($paletteField !== '--linebreak--') {
+                            $paletteFieldList[] = $paletteField;
+                        }
+                    }
+                }
+            }
+            $fieldList = array_merge($fieldList, $paletteFieldList);
+            $altFieldList = [];
+            // Traverse fields in types config and parse the configuration into a nice array:
+            foreach ($fieldList as $k => $v) {
+                $vArray = GeneralUtility::trimExplode(';', $v);
+                $fieldList[$k] = [
+                    'field' => $vArray[0],
+                    'title' => $vArray[1] ?? null,
+                    'palette' => $vArray[2] ?? null,
+                    'spec' => [],
+                    'origString' => $v
+                ];
+                if ($useFieldNameAsKey) {
+                    $altFieldList[$fieldList[$k]['field']] = $fieldList[$k];
+                }
+            }
+            if ($useFieldNameAsKey) {
+                $fieldList = $altFieldList;
+            }
+
+            // Add to first-level-cache
+            $this->tcaTableTypeConfigurationCache[$cacheIdentifier] = $fieldList;
+
+            // Return array:
+            return $fieldList;
+        }
+        return null;
+    }
+
+    /**
+     * Returns the "type" value of $rec from $table which can be used to look up the correct "types" rendering section in $GLOBALS['TCA']
+     * If no "type" field is configured in the "ctrl"-section of the $GLOBALS['TCA'] for the table, zero is used.
+     * If zero is not an index in the "types" section of $GLOBALS['TCA'] for the table, then the $fieldValue returned will default to 1 (no matter if that is an index or not)
+     *
+     * Note: This method is very similar to the type determination of FormDataProvider/DatabaseRecordTypeValue,
+     * however, it has two differences:
+     * 1) The method in TCEForms also takes care of localization (which is difficult to do here as the whole infrastructure for language overlays is only in TCEforms).
+     * 2) The $row array looks different in TCEForms, as in there it's not the raw record but the prepared data from other providers is handled, which changes e.g. how "select"
+     * and "group" field values are stored, which makes different processing of the "foreign pointer field" type field variant necessary.
+     *
+     * @param string $table Table name present in TCA
+     * @param array $row Record from $table
+     * @throws \RuntimeException
+     * @return string Field value
+     */
+    protected function getTCAtypeValue($table, $row)
+    {
+        $typeNum = 0;
+        if ($GLOBALS['TCA'][$table]) {
+            $field = $GLOBALS['TCA'][$table]['ctrl']['type'];
+            if (strpos($field, ':') !== false) {
+                list($pointerField, $foreignTableTypeField) = explode(':', $field);
+                // Get field value from database if field is not in the $row array
+                if (!isset($row[$pointerField])) {
+                    $localRow = BackendUtility::getRecord($table, $row['uid'], $pointerField);
+                    $foreignUid = $localRow[$pointerField];
+                } else {
+                    $foreignUid = $row[$pointerField];
+                }
+                if ($foreignUid) {
+                    $fieldConfig = $GLOBALS['TCA'][$table]['columns'][$pointerField]['config'];
+                    $relationType = $fieldConfig['type'];
+                    if ($relationType === 'select') {
+                        $foreignTable = $fieldConfig['foreign_table'];
+                    } elseif ($relationType === 'group') {
+                        $allowedTables = explode(',', $fieldConfig['allowed']);
+                        $foreignTable = $allowedTables[0];
+                    } else {
+                        throw new \RuntimeException(
+                            'TCA foreign field pointer fields are only allowed to be used with group or select field types.',
+                            1325862240
+                        );
+                    }
+                    $foreignRow = BackendUtility::getRecord($foreignTable, $foreignUid, $foreignTableTypeField);
+                    if ($foreignRow[$foreignTableTypeField]) {
+                        $typeNum = $foreignRow[$foreignTableTypeField];
+                    }
+                }
+            } else {
+                $typeNum = $row[$field];
+            }
+            // If that value is an empty string, set it to "0" (zero)
+            if (empty($typeNum)) {
+                $typeNum = 0;
+            }
+        }
+        // If current typeNum doesn't exist, set it to 0 (or to 1 for historical reasons, if 0 doesn't exist)
+        if (!isset($GLOBALS['TCA'][$table]['types'][$typeNum]) || !$GLOBALS['TCA'][$table]['types'][$typeNum]) {
+            $typeNum = isset($GLOBALS['TCA'][$table]['types']['0']) ? 0 : 1;
+        }
+        // Force to string. Necessary for eg '-1' to be recognized as a type value.
+        $typeNum = (string)$typeNum;
+        return $typeNum;
     }
 }
