@@ -22,7 +22,7 @@ CREATE TABLE tx_l10nmgr_cfg (
 	filenameprefix tinytext,
 	overrideexistingtranslations tinyint(4) DEFAULT '0',
 	pretranslatecontent tinyint(4) DEFAULT '0',
-	
+
 	PRIMARY KEY (uid),
 	KEY parent (pid)
 );
@@ -68,7 +68,7 @@ CREATE TABLE tx_l10nmgr_priorities (
 	description text,
 	languages blob,
 	element blob,
-	
+
 	PRIMARY KEY (uid),
 	KEY parent (pid)
 );
@@ -90,6 +90,11 @@ CREATE TABLE tx_l10nmgr_exportdata (
 	tablelist text,
 	exportType blob,
 	filename text,
-	
+
 	PRIMARY KEY (uid),
+);
+
+# workaround for TYPO3 v9/v10 to have that field available
+CREATE TABLE sys_language (
+	static_lang_isocode int(11) unsigned DEFAULT '0' NOT NULL
 );

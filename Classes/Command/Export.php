@@ -171,23 +171,23 @@ class Export extends L10nCommand
         $this->getBackendUser()->setWorkspace($wsId);
 
         if ($error) {
-            return;
+            return 1;
         }
         foreach ($l10ncfgs as $l10ncfg) {
             if (MathUtility::canBeInterpretedAsInteger($l10ncfg) === false) {
                 $output->writeln('<error>' . $this->getLanguageService()->getLL('error.l10ncfg_id_int.msg') . '</error>');
-                return;
+                return 1;
             }
             foreach ($tlangs as $tlang) {
                 if (MathUtility::canBeInterpretedAsInteger($tlang) === false) {
                     $output->writeln('<error>' . $this->getLanguageService()->getLL('error.target_language_id_integer.msg') . '</error>');
-                    return;
+                    return 1;
                 }
                 try {
                     $msg .= $this->exportXML($l10ncfg, $tlang, $format, $input, $output);
                 } catch (Exception $e) {
                     $output->writeln('<error>' . $e->getMessage() . '</error>');
-                    return;
+                    return 1;
                 }
             }
         }
@@ -197,6 +197,7 @@ class Export extends L10nCommand
         $time = $time_end - $time_start;
         $output->writeln($msg . LF);
         $output->writeln(sprintf($this->getLanguageService()->getLL('export.process.duration.message'), $time) . LF);
+        return 0;
     }
 
     /**

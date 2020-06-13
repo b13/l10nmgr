@@ -87,8 +87,7 @@ class TranslationTasks extends BaseModule
 	</script>
 	';
         // Setting up the context sensitive menu:
-        $this->getPageRenderer()->loadJquery();
-        $this->getPageRenderer()->loadRequireJsModule('TYPO3/CMS/Backend/ClickMenu');
+        $this->getPageRenderer()->loadRequireJsModule('TYPO3/CMS/Backend/ContextMenu');
         $this->content .= $this->module->startPage($this->getLanguageService()->getLL("title"));
         $this->content .= '<div class="topspace5"></div>';
         // Render content:
@@ -174,7 +173,7 @@ class TranslationTasks extends BaseModule
 	</a>';
                 if ($el[0] == 'pages') {
                     // If another page module was specified, replace the default Page module with the new one
-                    $newPageModule = trim($this->getBackendUser()->getTSConfigVal('options.overridePageModule'));
+                    $newPageModule = trim($this->getBackendUser()->getTSConfig()['options.']['overridePageModule'] ?? '');
                     $pageModule = BackendUtility::isModuleSetInTBE_MODULES($newPageModule) ? $newPageModule : 'web_layout';
                     $path_module_path = GeneralUtility::resolveBackPath($GLOBALS['BACK_PATH'] . '../' . substr($GLOBALS['TBE_MODULES']['_PATHS'][$pageModule],
                             strlen(Environment::getPublicPath() . '/')));

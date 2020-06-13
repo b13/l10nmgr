@@ -129,11 +129,11 @@ class Import extends L10nCommand
                     break;
                 default:
                     $output->writeln('<error>Please specify a task with --task. Either "importString", "preview" or "importFile".</error>');
-                    return;
+                    return 1;
             }
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
-            return;
+            return 1;
         }
         // Calculate duration and output result message
         $end = microtime(true);
@@ -142,6 +142,7 @@ class Import extends L10nCommand
         $output->writeln(sprintf($this->getLanguageService()->getLL('import.process.duration.message'), $time));
         // Send reporting mail
 //        $this->sendMailNotification();
+        return 0;
     }
 
     /**

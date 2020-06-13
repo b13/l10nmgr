@@ -196,7 +196,7 @@ class L10nHtmlListView extends AbstractExportView
                             }
                             $tableRows[] = '<tr class="info">
 	<th colspan="2"><a href="' . htmlspecialchars('index.php?id=' . GeneralUtility::_GET('id') . '&showSingle=' . rawurlencode($table . ':' . $elementUid)) . '">' . htmlspecialchars($table . ':' . $elementUid) . '</a>' . $editLink . '</th>
-	<th colspan="3">' . htmlspecialchars(GeneralUtility::arrayToLogString($flags)) . '</th>
+	<th colspan="3">' . htmlspecialchars($this->arrayToLogString($flags)) . '</th>
 	</tr>';
                             if (!$showSingle || $showSingle === $table . ':' . $elementUid) {
                                 $tableRows[] = '<tr>
@@ -217,5 +217,30 @@ class L10nHtmlListView extends AbstractExportView
             }
         }
         return $output;
+    }
+
+
+    /**
+     * Converts a one dimensional array to a one line string which can be used for logging or debugging output
+     * Example: "loginType: FE; refInfo: Array; HTTP_HOST: www.example.org; REMOTE_ADDR: 192.168.1.5; REMOTE_HOST:; security_level:; showHiddenRecords: 0;"
+     *
+     * @param array $arr Data array which should be outputted
+     * @param mixed $valueList List of keys which should be listed in the output string. Pass a comma list or an array. An empty list outputs the whole array.
+     * @param int $valueLength Long string values are shortened to this length. Default: 20
+     * @return string Output string with key names and their value as string
+     */
+    protected function arrayToLogString(array $arr, $valueList = [], $valueLength = 20)
+    {
+        $str = '';
+        if (!is_array($valueList)) {
+            $valueList = GeneralUtility::trimExplode(',', $valueList, true);
+        }
+        $valListCnt = count($valueList);
+        foreach ($arr as $key => $value) {
+            if (!$valListCnt || in_array($key, $valueList)) {
+                $str .= (string)$key . trim(': ' . GeneralUtility::fixed_lgd_cs(str_replace(LF, '|', (string)$value), $valueLength)) . '; ';
+            }
+        }
+        return $str;
     }
 }

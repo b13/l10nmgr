@@ -77,7 +77,7 @@ class MkPreviewLinkService
      */
     public function mkSingleSrcPreviewLink($baseUrl, $srcLang)
     {
-        $ttlHours = (int)$this->getBackendUser()->getTSConfigVal('options.workspaces.previewLinkTTLHours');
+        $ttlHours = (int)$this->getBackendUser()->getTSConfig()['options.']['workspaces.']['previewLinkTTLHours'] ?? 0;
         $ttlHours = ($ttlHours ? $ttlHours : 24 * 2);
         $params = 'id=' . $this->pageIds[0] . '&L=' . $srcLang . '&ADMCMD_previewWS=' . $this->workspaceId;
         $previewUrl = $baseUrl . 'index.php?ADMCMD_prev=' . $this->compilePreviewKeyword(
@@ -146,7 +146,7 @@ class MkPreviewLinkService
      */
     public function mkSinglePreviewLink($baseUrl, $serverlink)
     {
-        $ttlHours = (int)$this->getBackendUser()->getTSConfigVal('options.workspaces.previewLinkTTLHours');
+        $ttlHours = (int)$this->getBackendUser()->getTSConfig()['options.']['workspaces.']['previewLinkTTLHours'] ?? 0;
         $ttlHours = ($ttlHours ? $ttlHours : 24 * 2);
         //no_cache=1 ???
         $params = 'id=' . $this->pageIds[0] . '&L=' . $this->sysLang . '&ADMCMD_previewWS=' . $this->workspaceId . '&serverlink=' . $serverlink;
@@ -165,7 +165,7 @@ class MkPreviewLinkService
     {
         $previewUrls = [];
         foreach ($this->pageIds as $pageId) {
-            $ttlHours = (int)$this->getBackendUser()->getTSConfigVal('options.workspaces.previewLinkTTLHours');
+            $ttlHours = (int)$this->getBackendUser()->getTSConfig()['options.']['workspaces.']['previewLinkTTLHours'] ?? 0;
             $ttlHours = ($ttlHours ? $ttlHours : 24 * 2);
             $params = 'id=' . $pageId . '&L=' . $this->sysLang . '&ADMCMD_previewWS=' . $this->workspaceId;
             $previewUrls[$pageId] = GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . 'index.php?ADMCMD_prev=' . $this->compilePreviewKeyword(

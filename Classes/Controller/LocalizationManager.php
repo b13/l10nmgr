@@ -44,7 +44,6 @@ use TYPO3\CMS\Core\Imaging\IconFactory;
 use TYPO3\CMS\Core\Mail\MailMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessage;
 use TYPO3\CMS\Core\Messaging\FlashMessageRendererResolver;
-use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\PathUtility;
 
@@ -183,21 +182,12 @@ return false;
             if ($this->id && $access) {
                 // Header:
                 //	$this->content.=$this->moduleTemplate->startPage($this->getLanguageService()->getLL('general.title'));
-                $this->content .= $this->moduleTemplate->header($this->getLanguageService()->getLL('general.title'));
+                $title = $this->MOD_MENU["action"][$this->MOD_SETTINGS["action"]];
+                $this->content .= '<h1>' . $this->getLanguageService()->getLL('general.title') . ' - ' . $title  . '</h1>';
                 // Create and render view to show details for the current l10nmgrcfg
                 /** @var L10nConfigurationDetailView $l10nmgrconfigurationView */
                 $l10nmgrconfigurationView = GeneralUtility::makeInstance(L10nConfigurationDetailView::class,
                     $l10ncfgObj, $this->moduleTemplate);
-                $title = $this->MOD_MENU["action"][$this->MOD_SETTINGS["action"]];
-                $this->content .= '<div class="panel panel-default expanded">
-    <div class="panel-heading" role="tab" id="headingL10nmgrPanel">
-        <h2 class="panel-title">' . $title . '
-            <a role="button" data-toggle="collapse" href="#l10nmgrPanel" aria-expanded="true" aria-controls="l10nmgrPanel" class="pull-right"><span class="caret"></span></a>
-        </h2>
-    </div>
-    <div id="l10nmgrPanel" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="headingL10nmgrPanel">
-        <div class="panel-body">
-            <div class="row">';
                 $this->content .= '
     <div class="col-md-6">
         <div class="form">
@@ -229,14 +219,17 @@ return false;
                         '',
                         $this->getLanguageService()->getLL('export.xml.noHidden.title')
                     ) .
-                    '</div></div></div>';
+                    '
+        </div>
+    </div>
+</div>';
                 // Render content:
                 if (!count($this->MOD_MENU['lang'])) {
                     $this->content .= '<div><h2>ERROR<h2>' . $this->getLanguageService()->getLL('general.access.error.title') . '</div>';
                 } else {
                     $this->moduleContent($l10ncfgObj);
                 }
-                $this->content .= '<div class="col-md-12">' . $l10nmgrconfigurationView->render() . '</div></div>';
+                $this->content .= '<div class="col-md-12">' . $l10nmgrconfigurationView->render() . '</div>';
             }
         }
     }
@@ -384,7 +377,6 @@ return false;
             case 'link':
                 /** @var L10nHTMLListView $htmlListView */
                 $htmlListView = GeneralUtility::makeInstance(L10nHtmlListView::class, $l10ncfgObj, $this->sysLanguage);
-                $this->content .= '</div></div></div></div><div class="row">';
                 $subcontent = '';
                 if ($this->MOD_SETTINGS["action"] == 'inlineEdit') {
                     $subcontent = $this->inlineEditAction($l10ncfgObj);
@@ -401,23 +393,23 @@ return false;
                 if ($this->MOD_SETTINGS["action"] == 'link') {
                     $htmlListView->setModeShowEditLinks();
                 }
-                $subcontent .= '</div></div><div class="col-md-12">' . $htmlListView->renderOverview() . '</div>';
+                $subcontent .= '</div></div><div class="form"><div class="col-md-12">' . $htmlListView->renderOverview();
                 break;
             case 'export_excel':
-                $subcontent = $this->excelExportImportAction($l10ncfgObj) . '</div></div></div></div></div><div class="row">';
+                $subcontent = $this->excelExportImportAction($l10ncfgObj) . '<div class="row">';
                 break;
             case 'export_xml': // XML import/export
                 $prefs['utf8'] = GeneralUtility::_POST('check_utf8');
                 $prefs['noxmlcheck'] = GeneralUtility::_POST('no_check_xml');
                 $prefs['check_exports'] = GeneralUtility::_POST('check_exports');
                 $this->getBackendUser()->pushModuleData('l10nmgr/cm1/prefs', $prefs);
-                $subcontent = $this->catXMLExportImportAction($l10ncfgObj) . '</div></div></div></div>';
+                $subcontent = $this->catXMLExportImportAction($l10ncfgObj);
                 break;
             DEFAULT: // Default display:
                 $subcontent = '<input class="btn btn-default" type="submit" value="' . $this->getLanguageService()->getLL('general.action.refresh.button.title') . '" name="_" />';
                 break;
         } //switch block
-        $this->content .= '<div class="col-md-6"><div class="form">' . $subcontent;
+        $this->content .= '<div class="col-md-6"><div class="form">' . $subcontent . '</div></div>';
     }
 
     /**
@@ -529,7 +521,7 @@ return false;
                 try {
                     $filename = $this->downloadXML($viewClass);
                     // Prepare a success message for display
-                    $link = sprintf('<a href="%s" target="_blank">%s</a>',
+                    $link = sprintf('<a href="%s" target="_blank" download>%s</a>',
                         GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . $filename, $filename);
                     $title = $this->getLanguageService()->getLL('export.download.success');
                     $message = '###MESSAGE###';
@@ -630,7 +622,7 @@ return false;
             ),
             '3' => array(
                 'label' => $this->getLanguageService()->getLL('l10nmgr.documentation.title'),
-                'content' => '<a class="btn btn-success" href="/' . PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName('EXT:l10nmgr')) . 'Documentation/manual.sxw" target="_new">Download</a>'
+                'content' => '<a class="btn btn-success" href="' . PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName('EXT:l10nmgr/Documentation/manual.sxw')) . '" download>Download</a>'
             )
         );
         $info = $this->moduleTemplate->getDynamicTabMenu($menuItems, 'ddtabs');
@@ -765,7 +757,7 @@ return false;
                     try {
                         $filename = $this->downloadXML($viewClass);
                         // Prepare a success message for display
-                        $link = sprintf('<a href="%s" target="_blank">%s</a>',
+                        $link = sprintf('<a href="%s" target="_blank" download>%s</a>',
                             GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . $filename, $filename);
                         $title = $this->getLanguageService()->getLL('export.download.success');
                         $message = '###MESSAGE###';
