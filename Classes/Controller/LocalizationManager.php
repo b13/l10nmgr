@@ -486,7 +486,7 @@ return false;
             $translationData->setPreviewLanguage($this->previewLanguage);
             GeneralUtility::unlink_tempfile($uploadedTempFile);
             $service->saveTranslation($l10ncfgObj, $translationData);
-            $info .= '<br /><br />' . $this->moduleTemplate->icons(1) . $this->getLanguageService()->getLL('import.success.message') . '<br /><br />';
+            $info .= '<br /><br />' . $this->getLanguageService()->getLL('import.success.message') . '<br /><br />';
         }
         // If export of XML is asked for, do that (this will exit and push a file for download)
         if (GeneralUtility::_POST('export_excel')) {
@@ -645,7 +645,7 @@ return false;
                 $translationData->setLanguage($this->sysLanguage);
                 $translationData->setPreviewLanguage($this->previewLanguage);
                 $service->saveTranslation($l10ncfgObj, $translationData);
-                $actionInfo .= '<br /><br />' . $this->moduleTemplate->icons(1) . 'Import done<br /><br />(Command count:' . $service->lastTCEMAINCommandsCount . ')';
+                $actionInfo .= '<br /><br />Import done<br /><br />(Command count:' . $service->lastTCEMAINCommandsCount . ')';
             } else {
                 // Relevant processing of XML Import with the help of the Importmanager
                 /** @var CatXmlImportManager $importManager */
@@ -678,7 +678,7 @@ return false;
                     //$actionInfo.="<pre>".var_export($GLOBALS['BE_USER'],true)."</pre>";
                     unset($importManager);
                     $service->saveTranslation($l10ncfgObj, $translationData);
-                    $actionInfo .= '<br />' . $this->moduleTemplate->icons(-1) . $this->getLanguageService()->getLL('import.xml.done.message') . '<br /><br />(Command count:' . $service->lastTCEMAINCommandsCount . ')';
+                    $actionInfo .= '<br />' . $this->getLanguageService()->getLL('import.xml.done.message') . '<br /><br />(Command count:' . $service->lastTCEMAINCommandsCount . ')';
                 }
             }
             GeneralUtility::unlink_tempfile($uploadedTempFile);
