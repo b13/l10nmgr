@@ -232,17 +232,13 @@ class L10nConfiguration
         if (empty($this->l10ncfg['exclude_tree'])) {
             return;
         }
-        $pageTrees = $this->getPageTrees();
+        $pagesToExclude = $this->getExcludedPages();
 
-        if (empty($pageTrees)) {
+        if (empty($pagesToExclude)) {
             return;
         }
 
-        $pagesToExclude = [];
-        foreach ($pageTrees as $pageTree) {
-            $this->addPageTreeToArray($pagesToExclude, $pageTree);
-        }
-        array_unique($pagesToExclude);
+        $pagesToExclude = array_unique($pagesToExclude);
 
         $excludeList = $this->l10ncfg['exclude'] ? ',' : '';
         foreach ($pagesToExclude as $page) {
@@ -256,37 +252,30 @@ class L10nConfiguration
      *
      * @return array
      */
-    protected function getPageTrees(): array
+    protected function getExcludedPages(): array
     {
-        GeneralUtility::trimExplode(',', $this->l10ncfg['exclude_tree'], true);
+        $entryPoints = GeneralUtility::intExplode(',', $this->l10ncfg['exclude_tree'], true);
 
         if (empty($entryPoints)) {
             return [];
         }
 
         $repository = GeneralUtility::makeInstance(PageTreeRepository::class);
-        foreach ($entryPoints as $k => &$entryPoint) {
-            $entryPoint = $repository->getTree($entryPoint);
-            if (!is_array($entryPoint)) {
-                unset($entryPoints[$k]);
-            }
+        $pageIds = [];
+        foreach ($entryPoints as $k => $entryPoint) {
+            $pageIds = $this->fetchChildren($repository->getTree($entryPoint));
         }
-        return $entryPoints;
+        return $pageIds;
     }
 
-    /**
-     * @param array $pagesToExclude
-     * @param array $pageTreePage
-     * @return void
-     */
-    protected function addPageTreeToArray(array &$pagesToExclude, array $pageTreePage)
+    protected function fetchChildren(array $tree): array
     {
-        $pagesToExclude[] = $pageTreePage['uid'];
-        if (empty($pageTreePage['_children'])) {
-            return;
+        $pageIds = $tree['uid'] ? [$tree['uid']] : [];
+        if (is_array($tree['_children'])) {
+            foreach ($tree['_children'] as $childTree) {
+                $pageIds = array_merge($pageIds, $this->fetchChildren($childTree));
+            }
         }
-        foreach ($pageTreePage['_children'] as $childPageTreePage) {
-            $this->addPageTreeToArray($pagesToExclude, $childPageTreePage);
-        }
+        return $pageIds;
     }
 }
