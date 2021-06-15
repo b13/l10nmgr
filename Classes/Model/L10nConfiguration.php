@@ -263,7 +263,7 @@ class L10nConfiguration
         $repository = GeneralUtility::makeInstance(PageTreeRepository::class);
         $pageIds = [];
         foreach ($entryPoints as $k => $entryPoint) {
-            $pageIds = $this->fetchChildren($repository->getTree($entryPoint));
+            $pageIds = array_merge($pageIds, $this->fetchChildren($repository->getTree($entryPoint)));
         }
         return $pageIds;
     }
